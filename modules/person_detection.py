@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 """
     Detection.
 
@@ -56,7 +58,7 @@ class PersonDetection:
 
 			# filter out weak detections by ensuring the `confidence` is
 			# greater than the minimum confidence
-			if confidence > args["confidence"]:
+			if confidence > 0.8:
 				# extract the index of the class label from the
 				# `detections`, then compute the (x, y)-coordinates of
 				# the bounding box for the object
@@ -65,30 +67,9 @@ class PersonDetection:
 				(startX, startY, endX, endY) = box.astype("int")
 
 				# draw the prediction on the frame
-				label = "{}: {:.2f}%".format(self.target[idx],
-					confidence * 100)
-				cv2.rectangle(frame, (startX, startY), (endX, endY),
-					self.colours[idx], 2)
+				label = "{}: {:.2f}%".format(self.target[idx], confidence * 100)
+				cv2.rectangle(frame, (startX, startY), (endX, endY), self.colours[idx], 2)
 				y = startY - 15 if startY - 15 > 15 else startY + 15
-				cv2.putText(frame, label, (startX, y),
-					cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.colours[idx], 2)
+				cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.colours[idx], 2)
 
-		# show the output frame
-		cv2.imshow("Frame", frame)
-		key = cv2.waitKey(1) & 0xFF
-
-		# if the `q` key was pressed, break from the loop
-		if key == ord("q"):
-			break
-
-		# update the FPS counter
-		fps.update()
-
-	# stop the timer and display FPS information
-	fps.stop()
-	print("[INFO] elapsed time: {:.2f}".format(fps.elapsed()))
-	print("[INFO] approx. FPS: {:.2f}".format(fps.fps()))
-
-	# do a bit of cleanup
-	cv2.destroyAllWindows()
-	vs.stop()
+		return frame
