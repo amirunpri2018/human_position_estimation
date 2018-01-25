@@ -1,4 +1,4 @@
 #!/usr/bin/env python
 
 # Export files
-from person_detection import PersonDetection
+from .human_detection import HumanDetection
