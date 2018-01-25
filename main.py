@@ -50,11 +50,8 @@ class HARN:
             # Run detection and show
             frame = self.pd.detect(self.img_raw)
             cv2.imshow("Detections", frame)
-            key = cv2.waitKey(1) & 0xFF
+            key = cv2.waitKey(2)
 
-            # Stop execution when q pressed
-            if key == ord("q"):
-                break
         except Exception as e:
             raise
 
@@ -67,7 +64,6 @@ class HARN:
                 param1: Raw image data
         """
         self.img_raw = data
-
 
 def main(args):
 
