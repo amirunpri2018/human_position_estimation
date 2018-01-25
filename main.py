@@ -13,16 +13,12 @@ from __future__ import division
 import rospy
 import sys
 import cv2
-import os
-import tf
-import random
-import math
 
 # Message data type
 from sensor_msgs.msg import Image
 
 # Modules
-from modules import PersonDetection
+from modules import HumanDetection
 
 class HARN:
 
@@ -33,7 +29,7 @@ class HARN:
         self.img_raw = None
 
         # Object instances
-        self.pd = PersonDetection()
+        self.hd = HumanDetection()
 
         # Image subscribtion
         self.image_raw = rospy.Subscriber('camera/rgb/image_raw', Image, self.set_raw_image)
@@ -48,7 +44,7 @@ class HARN:
         """
         try:
             # Run detection and show
-            frame = self.pd.detect(self.img_raw)
+            frame = self.hd.detect(self.img_raw)
             cv2.imshow("Detections", frame)
             key = cv2.waitKey(2)
 
