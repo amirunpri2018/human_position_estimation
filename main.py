@@ -16,6 +16,7 @@ import cv2
 
 # Message data type
 from sensor_msgs.msg import Image
+from cv_bridge import CvBridge, CvBridgeError
 
 # Modules
 from modules import HumanDetection
@@ -32,9 +33,9 @@ class HARN:
         self.hd = HumanDetection()
 
         # Image subscribtion
-        self.image_raw = rospy.Subscriber('camera/rgb/image_raw', Image, self.set_raw_image)
+        self.image_raw = rospy.Subscriber('xtion/rgb/image_raw', Image, self.set_raw_image)
 
-    def detect(self):
+    def logic(self):
         """
             The routine calls the detection
             module and shows the detections.
@@ -76,7 +77,7 @@ def main(args):
         rospy.sleep(3)
 
         # Run the logic
-        harn.detect()
+        harn.logic()
 
         # Spin it baby !
         rospy.spin()

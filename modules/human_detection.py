@@ -9,6 +9,7 @@
 """
 
 # import the necessary packages
+from cv_bridge import CvBridge, CvBridgeError
 from imutils.video import VideoStream
 from imutils.video import FPS
 import numpy as np
@@ -16,11 +17,14 @@ import argparse
 import imutils
 import time
 import cv2
+import os
 
 class HumanDetection:
 
     def __init__(self):
         """ Class constructor """
+
+        self.bridge = CvBridge()
 
         # Define detection's target/s
         self.target = ["person"]
@@ -30,13 +34,17 @@ class HumanDetection:
 
         # Load NN's serialised model
         print("[INFO] loading model...")
-        self.net = cv2.dnn.readNetFromCaffe("parameters/MobileNetSSD_deploy.prototxt.txt",
-                                            "parameters/MobileNetSSD_deploy.caffemodel")
+        self.net = cv2.dnn.readNetFromCaffe("/home/itaouil/tiago_ws/src/human_aware_robot_navigation/src/HARN/modules/MobileNetSSD_deploy.prototxt.txt",
+                                            "/home/itaouil/tiago_ws/src/human_aware_robot_navigation/src/HARN/modules/MobileNetSSD_deploy.caffemodel")
 
-    def detect(frame):
+    def detect(self, frame):
         """
-        Returns the frame with recognitions.
+            Returns the frame with recognitions.
         """
+
+        # Save frame in memory
+        print("PRINT: ", os.path.abspath(os.path.join(os.path.dirname( __file__ ))))
+        cv2.imwrite(os.path.abspath(os.path.join(os.path.dirname( __file__ ), 'frame.png')), frame)
 
         # Resize image to be maximum 400px wide
         frame = imutils.resize(frame, width = 400)
