@@ -39,7 +39,7 @@ def load_img():
     """
     return cv2.imread(str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0]) + "/data/converted/image.jpg")
 
-def person_detection():
+def person_detection(data):
     """
         Returns the frame with
         detections bounding boxes.
@@ -107,14 +107,18 @@ def person_detection():
             # Save frame
             store(frame)
 
+            # Show image
+            cv2.imshow('image', frame)
+            cv2.waitKey(5)
+
 def main(args):
 
     # Initialise node
     rospy.init_node('detection', anonymous=True)
 
     try:
-        # Perform detection
-        person_detection()
+        # Subscribe to TIAGo's image_raw topic
+        image_raw = rospy.Subscriber('xtion/rgb/image_raw', Image, person_detection)
 
         # Spin it baby !
         rospy.spin()
