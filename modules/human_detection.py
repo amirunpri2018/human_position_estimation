@@ -22,7 +22,7 @@ from pathlib import Path
 # Import ROS Image data type
 from sensor_msgs.msg import Image
 
-class HumanDetection:
+class PersonDetection:
 
     def __init__(self):
 
@@ -132,7 +132,7 @@ def main(args):
 
     try:
         # Initialise
-        hd = HumanDetection()
+        hd = PersonDetection()
 
         # Spin it baby !
         rospy.spin()
