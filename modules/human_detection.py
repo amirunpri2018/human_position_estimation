@@ -8,12 +8,36 @@
     returns a frame with detections.
 """
 
-# import the necessary packages
+# Modules
+import os
 import cv2
 import imutils
 import numpy as np
 
-def handle_person_detection(self, frame):
+# Path module
+from pathlib import Path
+
+def store(frame):
+    """
+        Stores image with
+        detections.
+
+        Arguments:
+            param1: MAT image with detection boxes
+    """
+    cv2.imwrite(str(Path(os.getcwd()).parents[0]) + "/data/detections/image.jpg", frame)
+
+# Load image to be processed
+def load_img():
+    """
+        Load image to be processed.
+
+        Returns:
+            image: MAT image
+    """
+    return cv2.imread(str(Path(os.getcwd()).parents[0]) + "/img_raw/image.jpg")
+
+def person_detection(self):
     """
         Returns the frame with
         detections bounding boxes.
@@ -25,7 +49,8 @@ def handle_person_detection(self, frame):
             MAT: Image with detections boxes
     """
 
-    print("Request: ", frame)
+    print("[INFO] Loading Image...")
+    frame = load_img()
 
     # Define detection's target/s
     targets = ["person"]
@@ -34,8 +59,9 @@ def handle_person_detection(self, frame):
     colours = np.random.uniform(0, 255, size=(len(targets), 3))
 
     # Load NN's serialised model
-    net = cv2.dnn.readNetFromCaffe("/home/itaouil/tiago_ws/src/human_aware_robot_navigation/src/HARN/modules/MobileNetSSD_deploy.prototxt.txt",
-                                   "/home/itaouil/tiago_ws/src/human_aware_robot_navigation/src/HARN/modules/MobileNetSSD_deploy.caffemodel")
+    print("[INFO] Loading Neural Network...")
+    net = cv2.dnn.readNetFromCaffe(str(Path(os.getcwd()).parents[0]) + "/data/nn_params/MobileNetSSD_deploy.prototxt.txt",
+                                   str(Path(os.getcwd()).parents[0]) + "/data/nn_params/MobileNetSSD_deploy.caffemodel")
 
     # Resize image to be maximum 400px wide
     frame = imutils.resize(frame, width = 400)
@@ -72,25 +98,23 @@ def handle_person_detection(self, frame):
             y = startY - 15 if startY - 15 > 15 else startY + 15
             cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, colours[idx], 2)
 
-    return RunDetectionResponse(frame)
+    store(frame)
 
 def main(args):
 
+    # Initialise node
+    rospy.init_node('detection', anonymous=True)
+
     try:
-        # Setting up service
-        print("[INFO] Detection service set up...")
+        # Perform detection
+        person_detection()
 
-        # Start node
-        rospy.init_node('person_detection')
-
-        # Create service
-        s = rospy.Service('person_detection', RunDetection, handle_person_detection)
-
-        # Log acknowledgement
-        print("[INFO] Ready to detect humans...")
-
-        # Spin it, baby !
+        # Spin it baby !
         rospy.spin()
 
     except KeyboardInterrupt as e:
         print('Error during main execution' + e)
+
+# Execute main
+if __name__ == '__main__':
+    main(sys.argv)

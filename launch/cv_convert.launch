@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="human_aware_robot_navigation" type="main.py" name="main"/>
+</launch>
