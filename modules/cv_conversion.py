@@ -31,7 +31,7 @@ def store(cv_image):
         Arguments:
             param1: MAT image
     """
-    cv2.imwrite(str(Path(os.getcwd()).parents[0]) + "/data/converted/image.jpg", cv_image)
+    cv2.imwrite(str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0]) + "/data/converted/image.jpg", cv_image)
 
 # Raw to OpenCV conversion
 def toMAT(raw_image):

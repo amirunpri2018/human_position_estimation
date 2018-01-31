@@ -25,7 +25,7 @@ def store(frame):
         Arguments:
             param1: MAT image with detection boxes
     """
-    cv2.imwrite(str(Path(os.getcwd()).parents[0]) + "/data/detections/detections.jpg", frame)
+    cv2.imwrite(str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0]) + "/data/detections/detections.jpg", frame)
 
 # Load image to be processed
 def load_img():
@@ -35,7 +35,7 @@ def load_img():
         Returns:
             image: MAT image
     """
-    return cv2.imread(str(Path(os.getcwd()).parents[0]) + "/converted/image.jpg")
+    return cv2.imread(str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0]) + "/data/converted/image.jpg")
 
 def person_detection():
     """
@@ -56,8 +56,8 @@ def person_detection():
 
     # Load NN's serialised model
     print("[INFO] Loading Neural Network...")
-    net = cv2.dnn.readNetFromCaffe(str(Path(os.getcwd()).parents[0]) + "/data/nn_params/MobileNetSSD_deploy.prototxt.txt",
-                                   str(Path(os.getcwd()).parents[0]) + "/data/nn_params/MobileNetSSD_deploy.caffemodel")
+    net = cv2.dnn.readNetFromCaffe(str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0]) + "/data/nn_params/MobileNetSSD_deploy.prototxt.txt",
+                                   str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0]) + "/data/nn_params/MobileNetSSD_deploy.caffemodel")
 
     # Load image to be processed
     print("[INFO] Loading Image...")
