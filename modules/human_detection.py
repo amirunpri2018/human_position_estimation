@@ -12,6 +12,7 @@
 import os
 import cv2
 import sys
+import time
 import rospy
 import imutils
 import numpy as np
@@ -58,9 +59,12 @@ class PersonDetection:
             Ouput:
                 MAT: Image with detections boxes
         """
+        start_time = time.time()
         # Load image to be processed
         print("[INFO] Loading Image...")
-        frame = load_img()
+        frame = self.load_img()
+        elapsed_time = time.time() - start_time
+        print("Loading image time: ", elapsed_time)
 
         # Resize image to be maximum 400px wide
         frame = imutils.resize(frame, width = 400)
@@ -69,11 +73,13 @@ class PersonDetection:
         (h, w) = frame.shape[:2]
         blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 0.007843, (300, 300), 127.5)
 
+        start_time = time.time()
         # pass the blob through the network and obtain the detections and
         # predictions
         print("[INFO] Running detection...")
         self.net.setInput(blob)
         detections = self.net.forward()
+        print("Detection time: ", time.time() - start_time) 
 
         # loop over the detections
         for i in np.arange(0, detections.shape[2]):
@@ -98,8 +104,10 @@ class PersonDetection:
                 y = startY - 15 if startY - 15 > 15 else startY + 15
                 cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.colours[idx], 2)
 
+                start_time = time.time()
                 # Save frame
-                store(frame)
+                self.store(frame)
+                print("Storing time: ", time.time() - start_time)
 
                 # Show image
                 cv2.imshow('image', frame)
@@ -131,8 +139,10 @@ def main(args):
     rospy.init_node('detection', anonymous=True)
 
     try:
+        start_time = time.time()
         # Initialise
         hd = PersonDetection()
+        print("Overall time: ", time.time() - start_time)
 
         # Spin it baby !
         rospy.spin()
