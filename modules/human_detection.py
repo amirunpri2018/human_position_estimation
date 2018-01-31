@@ -25,7 +25,7 @@ def store(frame):
         Arguments:
             param1: MAT image with detection boxes
     """
-    cv2.imwrite(str(Path(os.getcwd()).parents[0]) + "/data/detections/image.jpg", frame)
+    cv2.imwrite(str(Path(os.getcwd()).parents[0]) + "/data/detections/detections.jpg", frame)
 
 # Load image to be processed
 def load_img():
@@ -35,9 +35,9 @@ def load_img():
         Returns:
             image: MAT image
     """
-    return cv2.imread(str(Path(os.getcwd()).parents[0]) + "/img_raw/image.jpg")
+    return cv2.imread(str(Path(os.getcwd()).parents[0]) + "/converted/image.jpg")
 
-def person_detection(self):
+def person_detection():
     """
         Returns the frame with
         detections bounding boxes.
@@ -48,10 +48,6 @@ def person_detection(self):
         Ouput:
             MAT: Image with detections boxes
     """
-
-    print("[INFO] Loading Image...")
-    frame = load_img()
-
     # Define detection's target/s
     targets = ["person"]
 
@@ -62,6 +58,10 @@ def person_detection(self):
     print("[INFO] Loading Neural Network...")
     net = cv2.dnn.readNetFromCaffe(str(Path(os.getcwd()).parents[0]) + "/data/nn_params/MobileNetSSD_deploy.prototxt.txt",
                                    str(Path(os.getcwd()).parents[0]) + "/data/nn_params/MobileNetSSD_deploy.caffemodel")
+
+    # Load image to be processed
+    print("[INFO] Loading Image...")
+    frame = load_img()
 
     # Resize image to be maximum 400px wide
     frame = imutils.resize(frame, width = 400)
@@ -84,7 +84,7 @@ def person_detection(self):
 
         # filter out weak detections by ensuring the `confidence` is
         # greater than the minimum confidence
-        if confidence > 0.8:
+        if confidence > 0.2:
             # extract the index of the class label from the
             # `detections`, then compute the (x, y)-coordinates of
             # the bounding box for the object
