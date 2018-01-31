@@ -11,6 +11,7 @@
 # Modules
 import os
 import cv2
+import rospy
 import imutils
 import numpy as np
 
@@ -49,7 +50,10 @@ def person_detection():
             MAT: Image with detections boxes
     """
     # Define detection's target/s
-    targets = ["person"]
+    targets = ["background", "aeroplane", "bicycle", "bird", "boat",
+               "bottle", "bus", "car", "cat", "chair", "cow", "diningtable",
+               "dog", "horse", "motorbike", "person", "pottedplant", "sheep",
+               "sofa", "train", "tvmonitor"]
 
     # Bounding boxes colours
     colours = np.random.uniform(0, 255, size=(len(targets), 3))
@@ -82,13 +86,14 @@ def person_detection():
         # the prediction
         confidence = detections[0, 0, i, 2]
 
+        # extract the index of the class label from the
+        idx = int(detections[0, 0, i, 1])
+
         # filter out weak detections by ensuring the `confidence` is
         # greater than the minimum confidence
-        if confidence > 0.2:
-            # extract the index of the class label from the
+        if confidence > 0.2 and idx == 15:
             # `detections`, then compute the (x, y)-coordinates of
             # the bounding box for the object
-            idx = int(detections[0, 0, i, 1])
             box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
             (startX, startY, endX, endY) = box.astype("int")
 
@@ -98,7 +103,8 @@ def person_detection():
             y = startY - 15 if startY - 15 > 15 else startY + 15
             cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, colours[idx], 2)
 
-    store(frame)
+            # Save frame
+            store(frame)
 
 def main(args):
 
