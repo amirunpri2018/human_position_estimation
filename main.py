@@ -19,7 +19,7 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 
 # Modules
-from modules import HumanDetection
+from rgb_human_detection import HumanDetection
 
 class HARN:
 
