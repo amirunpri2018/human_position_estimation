@@ -1,8 +1,8 @@
 #include <ros/ros.h>
-#include <move_along_roads/RoadPlannerAction.h>
+#include <human_aware_robot_navigation/RoadPlannerAction.h>
 #include <actionlib/client/simple_action_client.h>
 
-typedef actionlib::SimpleActionClient<move_along_roads::RoadPlannerAction> MoveClient;
+typedef actionlib::SimpleActionClient<human_aware_robot_navigation::RoadPlannerAction> MoveClient;
 
 // this program waits for an input, and then sends a goal to road_planner
 
@@ -13,7 +13,7 @@ typedef actionlib::SimpleActionClient<move_along_roads::RoadPlannerAction> MoveC
 int main(int argc, char** argv){
 
   std::cout << "Initialising node..." << '\n';
-  ros::init(argc, argv, "move_along_roads");
+  ros::init(argc, argv, "human_aware_robot_navigation");
 
   //tell the action client that we want to spin a thread by default
   std::cout << "Initialising action client..." << '\n';
@@ -25,7 +25,7 @@ int main(int argc, char** argv){
   }
 
   // initial goal for the end nodes
-  move_along_roads::RoadPlannerGoal goal;
+  human_aware_robot_navigation::RoadPlannerGoal goal;
 
   while (ros::ok) {
     std::cout << "Input destination node name: " << '\n';
