@@ -1,13 +1,12 @@
-# graph libraries
+"""
+    Plot the custom topological
+    graph created.
+"""
+
+# Modules
 import networkx as nx
 from upstairs import graph
 import matplotlib.pyplot as plt
-
-""" this is useful when you're drawing out maps, it visualises where the
-    nodes are to help make sure you don't miss any """
-
-
-# this program just plots out the road network with labels
 
 # positions = {}
 # node_labels = {}
@@ -16,6 +15,6 @@ import matplotlib.pyplot as plt
 #     positions[node] = (-node[1], node[0])
 #     node_labels[node] = node[2]
 
-nx.draw(graph, with_labels = True)#, pos = positions, labels = node_labels)
+nx.draw(graph, with_labels = True)
 
 plt.show()

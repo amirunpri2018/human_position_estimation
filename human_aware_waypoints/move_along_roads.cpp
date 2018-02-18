@@ -1,56 +1,55 @@
+// Modules
 #include <ros/ros.h>
-#include <human_aware_robot_navigation/RoadPlannerAction.h>
 #include <actionlib/client/simple_action_client.h>
+#include <human_aware_robot_navigation/RoadPlannerAction.h>
 
 typedef actionlib::SimpleActionClient<human_aware_robot_navigation::RoadPlannerAction> MoveClient;
 
-// this program waits for an input, and then sends a goal to road_planner
+int main(int argc, char** argv) {
 
-// """ this could be updated or adapted to work with road_planner.py to
-//     direct the robot to non-node locations, by doing stuff like pythagoras or something,
-//     but for now it works okay like this """
+    // Initialise Node
+    ROS_INFO("Initialising node");
+    ros::init(argc, argv, "human_aware_robot_navigation");
 
-int main(int argc, char** argv){
+    // Initialise Actionlib action client
+    ROS_INFO("Initialise AC (Action Client)");
+    MoveClient ac("road_planner", true);
 
-  std::cout << "Initialising node..." << '\n';
-  ros::init(argc, argv, "human_aware_robot_navigation");
+    // Wait for AC to come alive
+    while(!ac.waitForServer(ros::Duration(5.0))) {
+        ROS_INFO("Waiting for the road_planner action server to come up");
+    }
 
-  //tell the action client that we want to spin a thread by default
-  std::cout << "Initialising action client..." << '\n';
-  MoveClient ac("road_planner", true);
+    while (ros::ok) {
+        // Read Input (node to reach)
+        std::cout << "Input destination node name: " << '\n';
+        std::string input;
+        std::cin >> input;
 
-  //wait for the action server to come up
-  while(!ac.waitForServer(ros::Duration(5.0))){
-    ROS_INFO("Waiting for the road_planner action server to come up");
-  }
+        if (input == "exit")
+          break;
 
-  // initial goal for the end nodes
-  human_aware_robot_navigation::RoadPlannerGoal goal;
+        // Goal to reach
+        human_aware_robot_navigation::RoadPlannerGoal goal;
+        goal.end_node = input;
 
-  while (ros::ok) {
-    std::cout << "Input destination node name: " << '\n';
-  	std::string input;
-  	std::cin >> input;
+        // Send robot to goal
+        ROS_INFO("Sending to input goal");
+        ac.sendGoal(goal);
 
-    if (input == "exit")
-      break;
+        // Wait for actionlib response
+        ac.waitForResult();
 
-    goal.end_node = input;
+        // Check state of the goal
+        if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED) {
+            ROS_INFO("GOAL REACHED...");
+        }
+        else {
+            ROS_INFO("GOAL FAILED...")
+        }
 
-    ROS_INFO("Sending location goal");
-    ac.sendGoal(goal);
+        printf("Current State: %s\n", ac.getState().toString().c_str());
+    }
 
-    std::cout << "Goal set to move to end node " << input << '\n';
-
-    ac.waitForResult();
-
-    if(ac.getState() == actionlib::SimpleClientGoalState::SUCCEEDED)
-      ROS_INFO("Final node reached");
-    else
-      ROS_INFO("Final node NOT reached");
-
-    printf("Current State: %s\n", ac.getState().toString().c_str());
-  }
-
-  return 0;
+    return 0;
 }
