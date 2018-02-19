@@ -63,3 +63,33 @@ class WaypointClient:
 
         # Return result
         self.client.get_result()
+
+def main():
+    """
+        Main.
+    """
+    # Initialise node
+    rospy.loginfo("Initialising node...")
+    rospy.init_node('waypoints_cli')
+
+    # Initialise action client
+    print ("Initialising action client...")
+    wc = WaypointClient()
+
+    print ("Waiting for the move_base action server to come up...")
+    ac.wait_for_server(rospy.Duration())
+    print ("move_base server up")
+
+    current_position = MoveBaseGoal()
+
+    print ("Subscribing to robot_pose")
+    rospy.Subscriber("robot_pose", MoveBaseGoal)
+
+    print ("Initialising action server")
+    server = RoadPlanner('road_planner')
+    print ("Server up: Enter first destination node")
+
+    rospy.spin()
+
+if __name__ == '__main__':
+    main()

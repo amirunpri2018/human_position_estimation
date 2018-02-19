@@ -77,7 +77,7 @@ class WaypointServer:
             current_node = self.getClosestPoint()
 
             # Compute shortest path to goal
-            path = dijkstra_path(graph, current_node, target_node)
+            path = dijkstra_path(graph, current_node, goal)
 
             # Move along computed path
             move_along_path(path)
@@ -94,11 +94,18 @@ class WaypointServer:
                 param1: djikstra path
         """
         # Path iterator
-        node_index = 1
+        i = 1
 
-        # Movement
-        while node_index <= len(path):
-            pass
+        # Send robot to closest
+        # node until it reaches
+        # the goal (iteratively)
+        while i <= len(path):
+            # Send goal
+            result = self.gtp.goto(path[-i][0], path[-i][1], 0)
+
+            # Check execution state
+            if result:
+                rospy.loginfo("Reached node: %s", path[-i][2])
 
     def getClosestPoint(self):
         """
