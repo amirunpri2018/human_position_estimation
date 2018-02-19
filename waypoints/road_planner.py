@@ -8,10 +8,10 @@
 """
 
 # Modules
+import tf
 import sys
 import math
 import rospy
-import tf2_ros
 import actionlib
 import networkx as nx
 
@@ -31,13 +31,14 @@ class RoadPlanner(object):
 
     # initialise the node
     def __init__(self, name):
-        """
-            Class' constructor.
-        """
+        """ Class constructor """
 
         # create messages that are used to publish feedback/result
         # _feedback = move_along_roads.msg.RoadPlannerFeedback()
         # _result   = move_along_roads.msg.RoadPlannerResult()
+
+        # Transform object
+        self.tf_listener = tf.TransformListener()
 
         self.action_name = name
         self.action_server = actionlib.SimpleActionServer(self.action_name,
@@ -45,8 +46,6 @@ class RoadPlanner(object):
                                                           auto_start = False)
         self.action_server.start()
         self.action_server.register_goal_callback(self.goalCB)
-        self.tfBuffer = tf2_ros.Buffer()
-        self.listener = tf2_ros.TransformListener(self.tfBuffer)
 
     def move_to_node(self, node):
         """
@@ -186,16 +185,16 @@ class RoadPlanner(object):
 
     def getPose(self):
         """
-            Looks up the pose of
-            the robot in the map.
-            Transform lookup is
-            used for the task.
+            Returns the base_link position
+            in relation to the map.
+
+            Returns:
+                list: trans and quaternion of the ar marker (in the map)
         """
         try:
-            trans = self.tfBuffer.lookup_transform('map', 'base_link', rospy.Time())
-            return trans
-        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as e:
-            rospy.loginfo("Exception in getPose: " + e)
+            return self.tf_listener.lookupTransform('/map', 'base_link', rospy.Time(0))
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+            rospy.loginfo("getPose function lookup EXCEPTION!")
 
 def main():
     """
