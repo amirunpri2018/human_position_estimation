@@ -28,30 +28,41 @@ from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 class GoToPose():
 
     def __init__(self):
-        """ Constructor """
-
+        """
+            Constructor.
+        """
         # Boolean flag
         self.goal_sent = False
 
-    	# Shutdown callback
-    	rospy.on_shutdown(self.shutdown)
-
     	# Movebase action client
     	self.move_base = actionlib.SimpleActionClient("move_base", MoveBaseAction)
-    	rospy.loginfo("Wait for the action server to come up...")
 
-    	# Allow up to 5 seconds for the action server to come up
-    	self.move_base.wait_for_server(rospy.Duration(5))
+        # Wait for server connection
+        # and send custom goal for the
+        # execution (allow 5s)
+        if self.move_base.wait_for_server(rospy.Duration(5)):
+            # Set shutdown callback
+        	rospy.on_shutdown(self.shutdown)
+            rospy.loginfo("Wait for the action server to come up...")
+        else:
+            rospy.loginfo("Action server connection FAILED...")
 
     def goto(self, x, y, theta):
+        """
+            Function to send goal
+            to movebase action server.
 
+            Arguments:
+                param1: x pose in the map
+                param2: y pose in the map
+                param3: theta rotation
+        """
         # Build desired pose
         pos = {'x': x, 'y' : y}
         quat = {'r1' : 0.000, 'r2' : 0.000, 'r3' : np.sin(theta/2.0), 'r4' : np.cos(theta/2.0)}
-
         rospy.loginfo("Go to (%s, %s) pose", pos['x'], pos['y'])
 
-        # Send a goal
+        # Set goal
         self.goal_sent = True
         goal = MoveBaseGoal()
         goal.target_pose.header.frame_id = 'map'
@@ -59,12 +70,13 @@ class GoToPose():
         goal.target_pose.pose = Pose(Point(pos['x'], pos['y'], 0.000),
                                      Quaternion(quat['r1'], quat['r2'], quat['r3'], quat['r4']))
 
-        # Start moving
+        # Send goal
         self.move_base.send_goal(goal)
 
-    	# Allow TurtleBot up to 60 seconds to complete task
+    	# Wait for 60s for task completition
     	success = self.move_base.wait_for_result(rospy.Duration(60))
 
+        # Get state of the action
         state = self.move_base.get_state()
         result = False
 
@@ -79,7 +91,7 @@ class GoToPose():
         return result
 
     def shutdown(self):
-
+        # Cancel goal if shutdown
         if self.goal_sent:
             self.move_base.cancel_goal()
 

@@ -21,14 +21,16 @@ import actionlib_msgs.msg
 class WaypointClient:
 
     def __init__(self):
-        """ Constructor """
+        """
+            Constructor
+        """
         # Action client instance
         self.action_client = actionlib.SimpleActionClient("waypoints", actionlib_msgs.msg.WaypointAction)
 
         # Wait for server connection
         # and send custom goal for the
-        # execution
-        if self.action_client.wait_for_server():
+        # execution (allow 5s)
+        if self.action_client.wait_for_server(rospy.Duration(5)):
             self.setGoal()
 
     def setGoal(self):
