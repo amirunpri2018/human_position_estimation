@@ -99,19 +99,21 @@ class WaypointServer:
         # Send robot to closest
         # node until it reaches
         # the goal (iteratively)
-        while i < len(path):
+        while i < len(path)-1:
             # Send goal
             result = self.gtp.goto(path[i][0], path[i][1], 0)
 
-            # Check execution state
+            # If goal successful and
             if result:
                 # Succesfully reached state
-                rospy.loginfo("Reached node: %s", path[i][2])
+                rospy.loginfo("Reached intermediate goal: %s", path[i][2])
 
-                # Move to next node
+                # Move to next goal
                 i += 1
             else:
-                # TODO: Check if there is human in the front
+                # TODO: Check if human in front.
+                # Keep going
+                continue
 
     def getClosestPoint(self):
         """
