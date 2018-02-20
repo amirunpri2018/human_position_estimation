@@ -94,18 +94,24 @@ class WaypointServer:
                 param1: djikstra path
         """
         # Path iterator
-        i = 1
+        i = 0
 
         # Send robot to closest
         # node until it reaches
         # the goal (iteratively)
-        while i <= len(path):
+        while i < len(path):
             # Send goal
-            result = self.gtp.goto(path[-i][0], path[-i][1], 0)
+            result = self.gtp.goto(path[i][0], path[i][1], 0)
 
             # Check execution state
             if result:
-                rospy.loginfo("Reached node: %s", path[-i][2])
+                # Succesfully reached state
+                rospy.loginfo("Reached node: %s", path[i][2])
+
+                # Move to next node
+                i += 1
+            else:
+                # TODO: Check if there is human in the front
 
     def getClosestPoint(self):
         """

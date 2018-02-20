@@ -33,63 +33,48 @@ class WaypointClient:
         if self.action_client.wait_for_server(rospy.Duration(5)):
             self.setGoal()
 
-    def setGoal(self):
+    def setGoal(self, input_node):
         """
             Prepares custom goal
             and sends it to the
             action server for its
             execution.
+
+            Arguments:
+                param1: target node in the map
         """
         # Create custom goal
         goal = actionlib_msgs.msg.WaypointGoal
+        goal.end_node = input_node
 
         # Send goal to action server
-        self.sendGoal(goal)
+        self.client.send_goal(goal, self.doneCb, self.activeCb, self.feedbackCb)
 
-    def sendGoal(self, goal):
+    def doneCb(self, state, result):
         """
-            Receives custom goal
-            and sends it to the
-            action server.
+            Callback upon goal
+            completition. Prints
+            state and result of
+            the goal.
 
             Arguments:
-                param1: Custom actionlib goal
+                param1: goal state
+                param2: goal result
         """
-        # Send goal to action server
-        self.client.send_goal(goal)
+        rospy.loginfo("Finished in state [%s]", state)
+        rospy.loginfo("Goal result: %s", result)
 
-        # Wait for server response
-        self.client.wait_for_result()
+    def activeCb(self):
+        """
+            Goal activation feedback.
+        """
+        rospy.loginfo("Goal went active!")
 
-        # Return result
-        self.client.get_result()
+    def feedbackCb(self, feedback):
+        """
+            Feedback callback.
 
-def main():
-    """
-        Main.
-    """
-    # Initialise node
-    rospy.loginfo("Initialising node...")
-    rospy.init_node('waypoints_cli')
-
-    # Initialise action client
-    print ("Initialising action client...")
-    wc = WaypointClient()
-
-    print ("Waiting for the move_base action server to come up...")
-    ac.wait_for_server(rospy.Duration())
-    print ("move_base server up")
-
-    current_position = MoveBaseGoal()
-
-    print ("Subscribing to robot_pose")
-    rospy.Subscriber("robot_pose", MoveBaseGoal)
-
-    print ("Initialising action server")
-    server = RoadPlanner('road_planner')
-    print ("Server up: Enter first destination node")
-
-    rospy.spin()
-
-if __name__ == '__main__':
-    main()
+            Arguments:
+                param1: goal feedback
+        """
+        rospy.loginfo("Received feedback: %s", feedback)

@@ -26,6 +26,14 @@ from sensor_msgs.msg import Image
 class PersonDetection:
 
     def __init__(self):
+        """
+            Constructor.
+        """
+        # Detection target (human in our case)
+        self.target = 15
+
+        # Confidence (for detection)
+        self.confidence = 0.8
 
         # Constant path
         self.path = str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0])
@@ -44,11 +52,11 @@ class PersonDetection:
                                             self.path + "/data/nn_params/MobileNetSSD_deploy.caffemodel")
 
         # Subscribe to TIAGo's image_raw topic
-        self.image_sub = rospy.Subscriber('xtion/rgb/image_raw', Image, self.person_detection)
+        self.image_sub = rospy.Subscriber('xtion/rgb/image_raw', Image, self.detection)
 
         print("[INFO] Successful Initialisation")
 
-    def person_detection(self, data):
+    def detection(self, data):
         """
             Returns the frame with
             detections bounding boxes.
@@ -79,7 +87,7 @@ class PersonDetection:
         print("[INFO] Running detection...")
         self.net.setInput(blob)
         detections = self.net.forward()
-        print("Detection time: ", time.time() - start_time) 
+        print("Detection time: ", time.time() - start_time)
 
         # loop over the detections
         for i in np.arange(0, detections.shape[2]):
@@ -92,7 +100,7 @@ class PersonDetection:
 
             # filter out weak detections by ensuring the `confidence` is
             # greater than the minimum confidence
-            if confidence > 0.2 and idx == 15:
+            if confidence > self.confidence and idx == self.target:
                 # `detections`, then compute the (x, y)-coordinates of
                 # the bounding box for the object
                 box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
