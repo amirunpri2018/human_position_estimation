@@ -15,8 +15,8 @@ from __future__ import print_function
 import rospy
 import actionlib
 
-# Custom message
-import actionlib_msgs.msg
+# Custom server action message
+from human_aware_robot_navigation.msg import WaypointAction
 
 class WaypointClient:
 
@@ -25,7 +25,7 @@ class WaypointClient:
             Constructor
         """
         # Action client instance
-        self.action_client = actionlib.SimpleActionClient("waypoints", actionlib_msgs.msg.WaypointAction)
+        self.action_client = actionlib.SimpleActionClient("waypoints", WaypointsAction)
 
         # Wait for server connection
         # and send custom goal for the
@@ -44,7 +44,7 @@ class WaypointClient:
                 param1: target node in the map
         """
         # Create custom goal
-        goal = actionlib_msgs.msg.WaypointGoal
+        goal = WaypointsGoal
         goal.end_node = input_node
 
         # Send goal to action server

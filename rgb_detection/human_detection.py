@@ -23,17 +23,23 @@ from pathlib import Path
 # Import ROS Image data type
 from sensor_msgs.msg import Image
 
+# Custom detection message
+from human_aware_robot_navigation import Detection
+
 class PersonDetection:
 
     def __init__(self):
         """
             Constructor.
         """
-        # Detection target (human in our case)
+        # Detection target (person)
         self.target = 15
 
         # Confidence (for detection)
         self.confidence = 0.8
+
+        # Publishing rate
+        self.rate = rospy.Rate(10)
 
         # Constant path
         self.path = str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0])
@@ -50,6 +56,9 @@ class PersonDetection:
         # Load NN's serialised model
         self.net = cv2.dnn.readNetFromCaffe(self.path + "/data/nn_params/MobileNetSSD_deploy.prototxt.txt",
                                             self.path + "/data/nn_params/MobileNetSSD_deploy.caffemodel")
+
+        # Publisher (custom detection message)
+        self.detection_pub = rospy.Publisher('person_detection', Detection)
 
         # Subscribe to TIAGo's image_raw topic
         self.image_sub = rospy.Subscriber('xtion/rgb/image_raw', Image, self.detection)
@@ -112,6 +121,10 @@ class PersonDetection:
                 y = startY - 15 if startY - 15 > 15 else startY + 15
                 cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.colours[idx], 2)
 
+                # Populate message and
+                msg = Detection()
+                msg.
+
                 start_time = time.time()
                 # Save frame
                 self.store(frame)
@@ -120,6 +133,8 @@ class PersonDetection:
                 # Show image
                 cv2.imshow('image', frame)
                 cv2.waitKey(5)
+
+    def publish_detections()
 
     # Load image to be processed
     def load_img(self):

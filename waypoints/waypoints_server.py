@@ -23,7 +23,9 @@ from gotopose import GoToPose
 import geometry_msgs.msg
 from std_msgs.msg import String
 from move_base_msgs.msg import *
-from actionlib_msgs.msg import GoalStatus
+
+# Custom server action message
+from human_aware_robot_navigation.msg import WaypointsAction
 
 # Topological map
 from ./graphs/logik import graph
@@ -51,7 +53,7 @@ class WaypointServer:
 
         # Action server object
         self.action_server = actionlib.SimpleActionServer(self.action_name,
-                                                          actionlib_msgs.msg.GoalStatus,
+                                                          WaypointsAction,
                                                           execute_cb = self.execute_cb,
                                                           auto_start = False)
 
@@ -103,7 +105,7 @@ class WaypointServer:
             # Send goal
             result = self.gtp.goto(path[i][0], path[i][1], 0)
 
-            # If goal successful and
+            # If goal successful
             if result:
                 # Succesfully reached state
                 rospy.loginfo("Reached intermediate goal: %s", path[i][2])
@@ -120,14 +122,15 @@ class WaypointServer:
             Finds closest point
             in the topological map.
 
-            Arguments:
             Returns:
                 node: closest node in the topological map
         """
-        # Closest node holder
-        closest_node = None
-
+        # Check if base_link transform
+        # is valid
         if self.getPose():
+            # Set closest node
+            closest_node = None
+
             # Get robot's current position
             (pose, _) = self.getPose()
 
@@ -145,7 +148,7 @@ class WaypointServer:
                     min_distance = distance
                     closest_node = node
 
-        return closest_node
+            return closest_node
 
     def getPose(self):
         """
