@@ -23,7 +23,8 @@ from pathlib import Path
 # Import ROS Image data type
 from sensor_msgs.msg import Image
 
-# Custom detection message
+# Custom detection messages
+from human_aware_robot_navigation.msg import Detection
 from human_aware_robot_navigation.msg import Detections
 
 class PersonDetection:
@@ -36,7 +37,7 @@ class PersonDetection:
         self.target = 15
 
         # Detection message
-        self.detections = []
+        self.detections = Detections()
 
         # Confidence (for detection)
         self.confidence = 0.8
@@ -149,7 +150,7 @@ class PersonDetection:
         """
         # Publish message and clear
         self.detection_pub.publish(self.detections)
-        self.detections = []
+        self.detections = Detections()
 
     def getDetectionObject(self, confidence, rgb_x, rgb_y):
         """
