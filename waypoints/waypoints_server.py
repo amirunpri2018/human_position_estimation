@@ -25,6 +25,8 @@ from std_msgs.msg import String
 from move_base_msgs.msg import *
 
 # Custom server action message
+from human_aware_robot_navigation.msg import Detection
+from human_aware_robot_navigation.msg import Detections
 from human_aware_robot_navigation.msg import WaypointsAction
 
 # Topological map
@@ -50,6 +52,9 @@ class WaypointServer:
 
         # Server namespace
         self.action_name = name
+
+        # Subscriber to person detection
+        self.detection_sub = rospy.Subscriber('person_detection')
 
         # Action server object
         self.action_server = actionlib.SimpleActionServer(self.action_name,

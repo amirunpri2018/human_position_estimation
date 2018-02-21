@@ -37,7 +37,7 @@ class PersonDetection:
         self.target = 15
 
         # Detection message
-        self.detections = Detections()
+        self.custom = Detections()
 
         # Confidence (for detection)
         self.confidence = 0.8
@@ -130,7 +130,7 @@ class PersonDetection:
                 detection.confidence = confidence
                 detection.rgb_x = startX
                 detection.rgb_y = startY
-                self.detections.append(detection)
+                self.custom.detections.append(detection)
 
                 # Publish message
                 self.publishDetections()
@@ -149,8 +149,8 @@ class PersonDetection:
             for new publishing.
         """
         # Publish message and clear
-        self.detection_pub.publish(self.detections)
-        self.detections = Detections()
+        self.detection_pub.publish(self.custom)
+        self.custom = Detections()
 
     def getDetectionObject(self, confidence, rgb_x, rgb_y):
         """
