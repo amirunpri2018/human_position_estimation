@@ -24,7 +24,7 @@ from pathlib import Path
 from sensor_msgs.msg import Image
 
 # Custom detection message
-from human_aware_robot_navigation import Detection
+from human_aware_robot_navigation.msg import Detections
 
 class PersonDetection:
 
@@ -34,6 +34,9 @@ class PersonDetection:
         """
         # Detection target (person)
         self.target = 15
+
+        # Detection message
+        self.detections = []
 
         # Confidence (for detection)
         self.confidence = 0.8
@@ -58,7 +61,7 @@ class PersonDetection:
                                             self.path + "/data/nn_params/MobileNetSSD_deploy.caffemodel")
 
         # Publisher (custom detection message)
-        self.detection_pub = rospy.Publisher('person_detection', Detection)
+        self.detection_pub = rospy.Publisher('person_detection', Detections)
 
         # Subscribe to TIAGo's image_raw topic
         self.image_sub = rospy.Subscriber('xtion/rgb/image_raw', Image, self.detection)
@@ -121,20 +124,48 @@ class PersonDetection:
                 y = startY - 15 if startY - 15 > 15 else startY + 15
                 cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.colours[idx], 2)
 
-                # Populate message and
-                msg = Detection()
-                msg.
+                # Populate message
+                detection = Detection()
+                detection.confidence = confidence
+                detection.rgb_x = startX
+                detection.rgb_y = startY
+                self.detections.append(detection)
 
-                start_time = time.time()
+                # Publish message
+                self.publishDetections()
+
                 # Save frame
                 self.store(frame)
-                print("Storing time: ", time.time() - start_time)
 
                 # Show image
                 cv2.imshow('image', frame)
                 cv2.waitKey(5)
 
-    def publish_detections()
+    def publishDetections(self):
+        """
+            Send detections message
+            and clear it afterwards
+            for new publishing.
+        """
+        # Publish message and clear
+        self.detection_pub.publish(self.detections)
+        self.detections = []
+
+    def getDetectionObject(self, confidence, rgb_x, rgb_y):
+        """
+            Detection object for
+            detection custom message
+            population.
+
+            Arguments:
+                param1: detection confidence
+                param2: x coordinate of the centre box
+                param3: y coordinate of the centre box
+
+            Returns:
+                object: detection object
+        """
+        return {'confidence': confidence, 'rgb_x': rgb_x, 'rgb_y': rgb_y}
 
     # Load image to be processed
     def load_img(self):
