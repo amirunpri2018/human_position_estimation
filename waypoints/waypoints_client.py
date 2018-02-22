@@ -31,7 +31,7 @@ class WaypointClient:
         # and send custom goal for the
         # execution (allow 5s)
         if self.action_client.wait_for_server(rospy.Duration(5)):
-            self.setGoal()
+            rospy.loginfo("Waypoint action server alive!")
 
     def setGoal(self, input_node):
         """
@@ -48,7 +48,7 @@ class WaypointClient:
         goal.end_node = input_node
 
         # Send goal to action server
-        self.client.send_goal(goal, self.doneCb, self.activeCb, self.feedbackCb)
+        self.action_client.send_goal(goal, self.doneCb, self.activeCb, self.feedbackCb)
 
     def doneCb(self, state, result):
         """

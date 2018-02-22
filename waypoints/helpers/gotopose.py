@@ -42,8 +42,8 @@ class GoToPose():
         # execution (allow 5s)
         if self.move_base.wait_for_server(rospy.Duration(5)):
             # Set shutdown callback
-        	rospy.on_shutdown(self.shutdown)
-            rospy.loginfo("Wait for the action server to come up...")
+            rospy.on_shutdown(self.shutdown)
+            rospy.loginfo("Movebase action server live!")
         else:
             rospy.loginfo("Action server connection FAILED...")
 

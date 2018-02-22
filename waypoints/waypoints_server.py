@@ -52,7 +52,7 @@ class WaypointServer:
         self.action_name = name
 
         # Subscriber to person detection
-        self.detection_sub = rospy.Subscriber('person_detection')
+        self.detection_sub = rospy.Subscriber('person_detection', Detections)
 
         # Action server object
         self.action_server = actionlib.SimpleActionServer(self.action_name,
@@ -173,7 +173,7 @@ def main(args):
 
     try:
         # Initialise waypoints node
-        ws = WaypointServer()
+        ws = WaypointServer("waypoints")
 
         # Spin it baby !
         rospy.spin()
