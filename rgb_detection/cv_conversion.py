@@ -21,6 +21,37 @@ from sensor_msgs.msg import Image
 # Import cv_bridge (ROS interface for conversion)
 from cv_bridge import CvBridge, CvBridgeError
 
+# Custom service message
+from human_aware_robot_navigation.srv import *
+
+def requestDetection(req):
+    """
+        Requests detection
+        to service module.
+
+        Arguments:
+            param1: request string
+
+        Returns:
+            int: Service response (positive, negative)
+    """
+    # Wait for service to come alive
+    rospy.wait_for_service('detection')
+
+    try:
+        # Build request
+        request = rospy.ServiceProxy('detection', RequestDetection)
+
+        # Get response from service
+        res = request(req)
+
+        # Response
+        rospy.loginfo("Detection service: %s", res.response)
+        return res.response
+
+    except Exception as e:
+        raise
+
 # Raw to OpenCV conversion
 def store(cv_image):
     """
@@ -48,6 +79,10 @@ def toMAT(raw_image):
 
         # Store image
         store(cv_image)
+
+        # Send detection request to service
+        rospy.loginfo("Requesting detection service on converted image...")
+        requestDetection("request")
 
     except Exception as CvBridgeError:
         print('Error during image conversion: ', CvBridgeError)

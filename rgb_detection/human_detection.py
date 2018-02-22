@@ -24,8 +24,8 @@ from pathlib import Path
 from sensor_msgs.msg import Image
 
 # Custom detection messages
-from human_aware_robot_navigation.msg import Detection
-from human_aware_robot_navigation.msg import Detections
+from human_aware_robot_navigation.msg import *
+from human_aware_robot_navigation.srv import *
 
 class PersonDetection:
 
@@ -36,11 +36,11 @@ class PersonDetection:
         # Detection target (person)
         self.target = 15
 
-        # Detection message
-        self.custom = Detections()
-
         # Confidence (for detection)
         self.confidence = 0.8
+
+        # Detection message
+        self.custom = Detections()
 
         # Publishing rate
         self.rate = rospy.Rate(10)
@@ -64,28 +64,22 @@ class PersonDetection:
         # Publisher (custom detection message)
         self.detection_pub = rospy.Publisher('person_detection', Detections)
 
-        # Subscribe to TIAGo's image_raw topic
-        self.image_sub = rospy.Subscriber('xtion/rgb/image_raw', Image, self.detection)
-
         print("[INFO] Successful Initialisation")
 
-    def detection(self, data):
+    def detection(self, req):
         """
             Returns the frame with
             detections bounding boxes.
 
             Params:
-                MAT: Image with MAT format
+                req: Service request
 
             Ouput:
-                MAT: Image with detections boxes
+                int: Result of the service
         """
-        start_time = time.time()
         # Load image to be processed
         print("[INFO] Loading Image...")
         frame = self.load_img()
-        elapsed_time = time.time() - start_time
-        print("Loading image time: ", elapsed_time)
 
         # Resize image to be maximum 400px wide
         frame = imutils.resize(frame, width = 400)
@@ -97,10 +91,9 @@ class PersonDetection:
         start_time = time.time()
         # pass the blob through the network and obtain the detections and
         # predictions
-        print("[INFO] Running detection...")
+        print("[INFO] Detection...")
         self.net.setInput(blob)
         detections = self.net.forward()
-        print("Detection time: ", time.time() - start_time)
 
         # loop over the detections
         for i in np.arange(0, detections.shape[2]):
@@ -132,15 +125,18 @@ class PersonDetection:
                 detection.rgb_y = startY
                 self.custom.detections.append(detection)
 
-                # Publish message
-                self.publishDetections()
-
                 # Save frame
                 self.store(frame)
 
                 # Show image
                 cv2.imshow('image', frame)
                 cv2.waitKey(5)
+
+        # Publish message
+        self.publishDetections()
+
+        # Return service response
+        return RequestDetectionResponse("success")
 
     def publishDetections(self):
         """
@@ -191,13 +187,14 @@ class PersonDetection:
 def main(args):
 
     # Initialise node
-    rospy.init_node('detection', anonymous=True)
+    rospy.init_node('detection_server', anonymous=True)
 
     try:
-        start_time = time.time()
         # Initialise
         hd = PersonDetection()
-        print("Overall time: ", time.time() - start_time)
+
+        # Detection service
+        service = rospy.Service('detection', RequestDetection, hd.detection)
 
         # Spin it baby !
         rospy.spin()
