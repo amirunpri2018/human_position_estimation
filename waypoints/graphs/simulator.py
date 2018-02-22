@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 simulator_graph = nx.Graph()
 
 # Waypoints
-point1           = (-2.4, -0.124, "point1")
-point2           = (1.24, -1.41, "point2")
-point3           = (3.68, -6.6, "point3")
-point4           = (-3.26, -8.92, "point4")
+point1 = (-2.4, -0.124, "point1")
+point2 = (1.24, -1.41, "point2")
+point3 = (3.68, -6.6, "point3")
+point4 = (2.09, -10.9, "point4")
 
 # Graph's vertices
 simulator_graph.add_node(point1)

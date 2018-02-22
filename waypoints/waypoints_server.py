@@ -51,6 +51,9 @@ class WaypointServer:
         # Server namespace
         self.action_name = name
 
+        # Transform object
+        self.tf_listener = tf.TransformListener()
+
         # Subscriber to person detection
         self.detection_sub = rospy.Subscriber('person_detection', Detections)
 
@@ -84,17 +87,20 @@ class WaypointServer:
                 current_node = self.getClosestPoint()
 
                 # Compute shortest path to goal
-                path = dijkstra_path(simulator_graph, current_node, goal)
+                path = nx.dijkstra_path(simulator_graph, current_node, node)
 
                 # Move along computed path
-                move_along_path(path)
+                self.move_along_path(path)
 
                 # Set goal status
                 self.action_server.set_succeeded()
 
-            else:
-                rospy.loginfo("Node %s not found in the map!", goal)
-                self.action_server.set_aborted()
+                # Break the logic
+                return
+
+        # Invalid node: Abort the action
+        rospy.loginfo("Node %s not found in the map!", goal)
+        self.action_server.set_aborted()
 
     def move_along_path(self, path):
         """
@@ -110,7 +116,7 @@ class WaypointServer:
         # Send robot to closest
         # node until it reaches
         # the goal (iteratively)
-        while i < len(path)-1:
+        while i <= len(path)-1:
             # Send goal
             result = self.gtp.goto(path[i][0], path[i][1], 0)
 
@@ -142,14 +148,15 @@ class WaypointServer:
 
             # Get robot's current position
             (pose, _) = self.getPose()
+            print("Pose: ", pose)
 
             # Find minimum difference
             min_distance = sys.maxsize
 
             # Compute least squared
             for node in simulator_graph.nodes():
-                x_diff = node[0] - pose.x
-                y_diff = node[1] - pose.y
+                x_diff = node[0] - pose[0]
+                y_diff = node[1] - pose[1]
                 distance = math.sqrt(x_diff**2 + y_diff**2)
 
                 # Update distance if needed
