@@ -37,10 +37,14 @@ class PersonDetection:
         self.target = 15
 
         # Confidence (for detection)
-        self.confidence = 0.8
+        self.confidence = 0.7
 
-        # Detection message
-        self.custom = Detections()
+        # Number of human detections
+        self.number_of_detections = 0
+
+        # Detection messages
+        self.msg_detection = Detection()
+        self.msg_detections = Detections()
 
         # Publishing rate
         self.rate = rospy.Rate(10)
@@ -88,7 +92,6 @@ class PersonDetection:
         (h, w) = frame.shape[:2]
         blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 0.007843, (300, 300), 127.5)
 
-        start_time = time.time()
         # pass the blob through the network and obtain the detections and
         # predictions
         print("[INFO] Detection...")
@@ -107,6 +110,9 @@ class PersonDetection:
             # filter out weak detections by ensuring the `confidence` is
             # greater than the minimum confidence
             if confidence > self.confidence and idx == self.target:
+                # Human detections counter
+                self.number_of_detections += 1
+
                 # `detections`, then compute the (x, y)-coordinates of
                 # the bounding box for the object
                 box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
@@ -118,19 +124,23 @@ class PersonDetection:
                 y = startY - 15 if startY - 15 > 15 else startY + 15
                 cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.colours[idx], 2)
 
-                # Populate message
-                detection = Detection()
-                detection.confidence = confidence
-                detection.rgb_x = startX
-                detection.rgb_y = startY
-                self.custom.detections.append(detection)
+                # Populate Details message
+                details = Details()
+                details.confidence = confidence
+                details.height = startX
+                details.width = startY
+                details.rgb_x = startX
+                details.rgb_y = startY
+
+                # Populate Detection message
+                self.msg_detection.details.append(details)
 
                 # Save frame
                 self.store(frame)
 
                 # Show image
-                cv2.imshow('image', frame)
-                cv2.waitKey(5)
+                # cv2.imshow('image', frame)
+                # cv2.waitKey(5)
 
         # Publish message
         self.publishDetections()
@@ -140,13 +150,23 @@ class PersonDetection:
 
     def publishDetections(self):
         """
-            Send detections message
-            and clear it afterwards
-            for new publishing.
+            Populates detections array,
+            sends it and clears it afterwards
+            along with the detection array.
         """
-        # Publish message and clear
-        self.detection_pub.publish(self.custom)
-        self.custom = Detections()
+        # Populate detections (array of detection)
+        self.msg_detections.detections.append(self.msg_detection)
+        self.msg_detections.number_of_detections = self.number_of_detections
+
+        # Publish detections
+        self.detection_pub.publish(self.msg_detections)
+
+        # Clean detections and detection arrays
+        self.msg_detection = Detection()
+        self.msg_detections = Detections()
+
+        # Clear number of detections
+        self.number_of_detections = 0
 
     def getDetectionObject(self, confidence, rgb_x, rgb_y):
         """

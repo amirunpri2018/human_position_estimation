@@ -123,7 +123,7 @@ class WaypointServer:
             # If goal successful
             if result:
                 # Succesfully reached state
-                rospy.loginfo("Reached intermediate goal: %s", path[i][2])
+                rospy.loginfo("Reached goal: %s", path[i][2])
 
                 # Move to next goal
                 i += 1
@@ -131,6 +131,9 @@ class WaypointServer:
                 # TODO: Check if human in front.
                 # Keep going
                 continue
+
+        # Successful movement (thank you djikstra)
+        rospy.loginfo("Reached final goal: %s", path[i-1][2])
 
     def getClosestPoint(self):
         """
