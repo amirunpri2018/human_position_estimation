@@ -11,12 +11,12 @@
 """
 
 # Modules
-from __future__ import print_function
+import sys
 import rospy
 import actionlib
 
 # Custom server action message
-from human_aware_robot_navigation.msg import WaypointAction
+from human_aware_robot_navigation.msg import *
 
 class WaypointClient:
 
@@ -78,3 +78,25 @@ class WaypointClient:
                 param1: goal feedback
         """
         rospy.loginfo("Received feedback: %s", feedback)
+
+def main(args):
+
+    # Initialise node
+    rospy.init_node('waypoints', anonymous=True)
+
+    try:
+        # Initialise
+        wc = WaypointClient()
+
+        # Set goal
+        wc.setGoal("point4")
+
+        # Spin it baby !
+        rospy.spin()
+
+    except KeyboardInterrupt as e:
+        print('Error during main execution' + e)
+
+# Execute main
+if __name__ == '__main__':
+    main(sys.argv)

@@ -16,6 +16,9 @@ import rospy
 import actionlib
 import networkx as nx
 
+# Topological map
+# from simulator import graph
+
 # Routines
 from gotopose import GoToPose
 
@@ -25,12 +28,7 @@ from std_msgs.msg import String
 from move_base_msgs.msg import *
 
 # Custom server action message
-from human_aware_robot_navigation.msg import Detection
-from human_aware_robot_navigation.msg import Detections
-from human_aware_robot_navigation.msg import WaypointsAction
-
-# Topological map
-from ./graphs/logik import graph
+from human_aware_robot_navigation.msg import *
 
 class WaypointServer:
 
@@ -167,3 +165,22 @@ class WaypointServer:
             return self.tf_listener.lookupTransform('/map', 'base_link', rospy.Time(0))
         except(tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
             rospy.loginfo("getPose function lookup EXCEPTION: %s", e)
+
+def main(args):
+
+    # Initialise node
+    rospy.init_node('waypoints_server', anonymous=True)
+
+    try:
+        # Initialise waypoints node
+        ws = WaypointServer()
+
+        # Spin it baby !
+        rospy.spin()
+
+    except KeyboardInterrupt as e:
+        print('Error during main execution' + e)
+
+# Execute main
+if __name__ == '__main__':
+    main(sys.argv)
