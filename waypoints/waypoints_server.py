@@ -17,10 +17,10 @@ import actionlib
 import networkx as nx
 
 # Topological map
-# from simulator import graph
+from graphs import simulator_graph
 
 # Routines
-from gotopose import GoToPose
+from helpers import GoToPose
 
 # Messages
 import geometry_msgs.msg
