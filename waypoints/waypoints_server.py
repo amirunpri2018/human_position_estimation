@@ -42,6 +42,9 @@ class WaypointServer:
         # Flag
         self.success = True
 
+        # Detections message (subscription)
+        self.detections = None
+
         # Movebase object
         self.gtp = GoToPose()
 
@@ -55,7 +58,7 @@ class WaypointServer:
         self.tf_listener = tf.TransformListener()
 
         # Subscriber to person detection
-        self.detection_sub = rospy.Subscriber('person_detection', Detections)
+        self.detection_sub = rospy.Subscriber('person_detection', Detections, self.setDetections)
 
         # Action server object
         self.action_server = actionlib.SimpleActionServer(self.action_name,
@@ -128,9 +131,16 @@ class WaypointServer:
                 # Move to next goal
                 i += 1
             else:
-                # TODO: Check if human in front.
-                # Keep going
-                continue
+                # Check for human presence
+                # in front of the robot
+                if self.getDetections().number_of_detections > 0:
+                    rospy.loginfo("Number of detections: %s", self.getDetections().number_of_detections)
+
+                    # Interact with the person
+                    # TODO: Please take your time!
+
+                    # Try again the planning
+                    continue
 
         # Successful movement (thank you djikstra)
         rospy.loginfo("Reached final goal: %s", path[i-1][2])
@@ -181,6 +191,27 @@ class WaypointServer:
             return self.tf_listener.lookupTransform('/map', 'base_link', rospy.Time(0))
         except(tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
             rospy.loginfo("getPose function lookup EXCEPTION: %s", e)
+
+    def getDetections(self):
+        """
+            Getter method to
+            retrieve setted
+            detections messages.
+
+            Returns:
+                Detections: detections message
+        """
+        return self.detections
+
+    def setDetections(self, data):
+        """
+            Setter method for
+            detections message.
+
+            Arguments:
+                param1: Detections object
+        """
+        self.detections = data
 
 def main(args):
 
