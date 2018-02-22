@@ -57,38 +57,44 @@ class WaypointServer:
         # Action server object
         self.action_server = actionlib.SimpleActionServer(self.action_name,
                                                           WaypointsAction,
-                                                          execute_cb = self.execute_cb,
+                                                          execute_cb = self.callback,
                                                           auto_start = False)
 
         # Spin server and set callback
         self.action_server.start()
 
-    def execute_cb(self):
+    def callback(self, goal):
         """
             Action server callback
             function. It gets called
             every time the client sends
             a goal and pipes it through.
+
+            Arguments:
+                param1: node in the topological map
         """
-        # Hold goal
-        goal = self.action_server.accept_new_goal().end_node
-
         # Check if node is valid
-        if goal in graph.nodes():
-            # Successful node
-            rospy.loginfo("Setting the following goal %s", goal)
+        for node in simulator_graph.nodes():
 
-            # Found closest node
-            current_node = self.getClosestPoint()
+            if goal.end_node == node[2]:
+                # Successful node
+                rospy.loginfo("Setting the following goal %s", goal)
 
-            # Compute shortest path to goal
-            path = dijkstra_path(graph, current_node, goal)
+                # Found closest node
+                current_node = self.getClosestPoint()
 
-            # Move along computed path
-            move_along_path(path)
+                # Compute shortest path to goal
+                path = dijkstra_path(simulator_graph, current_node, goal)
 
-        else:
-            rospy.loginfo("Node %s not found in the map!", goal)
+                # Move along computed path
+                move_along_path(path)
+
+                # Set goal status
+                self.action_server.set_succeeded()
+
+            else:
+                rospy.loginfo("Node %s not found in the map!", goal)
+                self.action_server.set_aborted()
 
     def move_along_path(self, path):
         """
@@ -141,7 +147,7 @@ class WaypointServer:
             min_distance = sys.maxsize
 
             # Compute least squared
-            for node in graph.nodes():
+            for node in simulator_graph.nodes():
                 x_diff = node[0] - pose.x
                 y_diff = node[1] - pose.y
                 distance = math.sqrt(x_diff**2 + y_diff**2)
