@@ -131,13 +131,16 @@ class WaypointServer:
                 # Move to next goal
                 i += 1
             else:
+                # Log event
+                rospy.loginfo("Something blocked the way to the goal...")
+
                 # Check for human presence
                 # in front of the robot
                 if self.getDetections().number_of_detections > 0:
-                    rospy.loginfo("Number of detections: %s", self.getDetections().number_of_detections)
+                    rospy.loginfo("Human presence detected: %s number of detections", self.getDetections().number_of_detections)
 
                     # Interact with the person
-                    # TODO: Please take your time!
+                    rospy.loginfo("Please move!")
 
                     # Try again the planning
                     continue
