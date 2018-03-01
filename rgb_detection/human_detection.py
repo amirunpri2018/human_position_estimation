@@ -147,14 +147,10 @@ class PersonDetection:
                 self.msg_detection.details.append(details)
 
                 # Draw circle
-                cv2.circle(frame, centre_point, 63, (0,0,255), -1)
+                cv2.circle(frame, centre_point, 4, (0,0,255), -1)
 
                 # Save frame
                 self.store(frame)
-
-                # Show image
-                # cv2.imshow('image', frame)
-                # cv2.waitKey(5)
 
         # Publish message
         self.publishDetections()
