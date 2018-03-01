@@ -129,11 +129,10 @@ class PersonDetection:
                 y = startY - 15 if startY - 15 > 15 else startY + 15
                 cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.colours[idx], 2)
 
-                # Get centre point in
-                # the rectangle
+                # Get centre point in the rectangle
+                centre_point = self.getCentre(top_left, bottom_right)
                 print("Top left: ", top_left)
                 print("Bottom right: ", bottom_right)
-                centre_point = self.getCentre(top_left, bottom_right)
                 print("Centre point: ", centre_point)
 
                 # Populate Details message
@@ -233,36 +232,11 @@ class PersonDetection:
                 point: Centre point of the rectangle
         """
         # Compute distances
-        width  =
-        height =
+        width  = br[0] - tl[0]
+        height = tl[1] - br[1]
 
-        # Radian angle
-        theta_rad = math.radians(45)
-
-        # Degree conversion of cosine
-        cos_deg = math.degrees(math.cos(theta_rad))
-
-        # centre point
-        centreOffset = int(pk_distance/2 * cos_deg)
-
-        # Return tuple of the centre
-        return (p[0] + centreOffset, p[1] + centreOffset)
-
-    def getDistance(self, point1, point2):
-        """
-            Computes euclidean distance
-            between two points.
-
-            Arguments:
-                param1: Point1
-                param2: Point2
-1
-            Returns:
-                distance: euclidean distance between the points
-        """
-        x_squared_diff = math.pow((point1[0] - point2[0]), 2)
-        y_squared_diff = math.pow((point1[1] - point2[1]), 2)
-        return math.sqrt(x_squared_diff + y_squared_diff)
+        # Return centre
+        return (tl[0] + width * 0.5, tl[1] + height * 0.5)
 
 def main(args):
 
