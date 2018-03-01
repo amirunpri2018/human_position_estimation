@@ -146,11 +146,11 @@ class PersonDetection:
                 # Populate Detection message
                 self.msg_detection.details.append(details)
 
-                # Save frame
-                self.store(frame)
-
                 # Draw circle
                 cv2.circle(frame, centre_point, 63, (0,0,255), -1)
+
+                # Save frame
+                self.store(frame)
 
                 # Show image
                 # cv2.imshow('image', frame)
@@ -236,7 +236,7 @@ class PersonDetection:
         height = br[1] - tl[1]
 
         # Return centre
-        return (tl[0] + width * 0.5, tl[1] + height * 0.5)
+        return (tl[0] + int(width * 0.5), tl[1] + int(height * 0.5))
 
 def main(args):
 
