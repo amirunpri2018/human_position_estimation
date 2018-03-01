@@ -13,6 +13,7 @@ import os
 import cv2
 import sys
 import time
+import math
 import rospy
 import imutils
 import numpy as np
@@ -118,25 +119,39 @@ class PersonDetection:
                 box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
                 (startX, startY, endX, endY) = box.astype("int")
 
+                # Rectangle keypoints
+                top_left = (startX, startY)
+                bottom_right = (endX, endY)
+
                 # draw the prediction on the frame
                 label = "{}: {:.2f}%".format(self.targets[idx], confidence * 100)
-                cv2.rectangle(frame, (startX, startY), (endX, endY), self.colours[idx], 2)
+                cv2.rectangle(frame, top_left, bottom_right, self.colours[idx], 2)
                 y = startY - 15 if startY - 15 > 15 else startY + 15
                 cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.colours[idx], 2)
+
+                # Get centre point in
+                # the rectangle
+                print("Top left: ", top_left)
+                print("Bottom right: ", bottom_right)
+                centre_point = self.getCentre(top_left, bottom_right)
+                print("Centre point: ", centre_point)
 
                 # Populate Details message
                 details = Details()
                 details.confidence = confidence
-                details.height = startX
-                details.width = startY
-                details.rgb_x = startX
-                details.rgb_y = startY
+                details.height = 480
+                details.width = 640
+                details.rgb_x = centre_point[0]
+                details.rgb_y = centre_point[1]
 
                 # Populate Detection message
                 self.msg_detection.details.append(details)
 
                 # Save frame
                 self.store(frame)
+
+                # Draw circle
+                cv2.circle(frame, centre_point, 63, (0,0,255), -1)
 
                 # Show image
                 # cv2.imshow('image', frame)
@@ -197,12 +212,57 @@ class PersonDetection:
     def store(self, frame):
         """
             Stores image with
-            detections.
+            detections' bounding
+            boxes.
 
             Arguments:
                 param1: MAT image with detection boxes
         """
         cv2.imwrite(self.path + "/data/detections/detections.jpg", frame)
+
+    def getCentre(self, tl, br):
+        """
+            Finds centre point
+            of the bounding box.
+
+            Arguments:
+                param1: Top left corner of the rectangle
+                param2: Bottom right corner of the rectangle
+
+            Returns:
+                point: Centre point of the rectangle
+        """
+        # Compute distances
+        width  =
+        height =
+
+        # Radian angle
+        theta_rad = math.radians(45)
+
+        # Degree conversion of cosine
+        cos_deg = math.degrees(math.cos(theta_rad))
+
+        # centre point
+        centreOffset = int(pk_distance/2 * cos_deg)
+
+        # Return tuple of the centre
+        return (p[0] + centreOffset, p[1] + centreOffset)
+
+    def getDistance(self, point1, point2):
+        """
+            Computes euclidean distance
+            between two points.
+
+            Arguments:
+                param1: Point1
+                param2: Point2
+1
+            Returns:
+                distance: euclidean distance between the points
+        """
+        x_squared_diff = math.pow((point1[0] - point2[0]), 2)
+        y_squared_diff = math.pow((point1[1] - point2[1]), 2)
+        return math.sqrt(x_squared_diff + y_squared_diff)
 
 def main(args):
 
