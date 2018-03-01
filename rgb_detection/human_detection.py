@@ -233,7 +233,7 @@ class PersonDetection:
         """
         # Compute distances
         width  = br[0] - tl[0]
-        height = tl[1] - br[1]
+        height = br[1] - tl[1]
 
         # Return centre
         return (tl[0] + width * 0.5, tl[1] + height * 0.5)
