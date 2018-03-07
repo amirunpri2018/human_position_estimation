@@ -11,90 +11,110 @@ import os
 import cv2
 import sys
 import rospy
+import numpy as np
 
-# Path module
 from pathlib import Path
-
-# Import ROS Image data type
 from sensor_msgs.msg import Image
-
-# Import cv_bridge (ROS interface for conversion)
 from cv_bridge import CvBridge, CvBridgeError
-
-# Custom service message
 from human_aware_robot_navigation.srv import *
+from human_aware_robot_navigation.msg import *
 
-def requestDetection(req):
-    """
-        Requests detection
-        to service module.
+class DepthRetrieval:
 
-        Arguments:
-            param1: request string
+    def __init__(self):
+        """
+            Constructor.
+        """
+        # Global converted depth_image
+        self.depth_image = None
 
-        Returns:
-            int: Service response (positive, negative)
-    """
-    # Wait for service to come alive
-    rospy.wait_for_service('detection')
+        # Custom distances message
+        self.msg_distances = Distances()
 
-    try:
-        # Build request
-        request = rospy.ServiceProxy('detection', RequestDetection)
+        # Constant path
+        self.path = str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0])
 
-        # Get response from service
-        res = request(req)
+        # Depth image subscriber
+        self.depth_sub = rospy.Subscriber('/xtion/depth/image_raw', Image, self.convert)
 
-        # Response
-        rospy.loginfo("Detection service: %s", res.response)
-        return res.response
+    # Raw to OpenCV conversion
+    def store(self, cv_image):
+        """
+            Stores the converted cv_image
+            in memory to be further processed
+            by a different node.
 
-    except Exception as e:
-        raise
+            Arguments:
+                param1: MAT image
+        """
+        cv2.imwrite(self.path + "/data/depth_image/depth_image.jpg", cv_image)
 
-# Raw to OpenCV conversion
-def store(cv_image):
-    """
-        Stores the converted cv_image
-        in memory to be further processed
-        by a different node.
+    def convert(self, depth_raw_image):
+        try:
+            # Depth raw image to OpenCV format
+            depth_image = CvBridge().imgmsg_to_cv2(depth_raw_image, 'passthrough')
 
-        Arguments:
-            param1: MAT image
-    """
-    cv2.imwrite(str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0]) + "/data/converted/image.jpg", cv_image)
+            # Save greyscale image to memore
+            # N.B: This is why we multiply by 255
+            self.store(depth_image * 255)
 
-# Raw to OpenCV conversion
-def toMAT(raw_image):
-    """
-        Converts raw RGB image
-        into MAT format.
+            self.setDepthImage(depth_image)
 
-        Arguments:
-            param1: raw RGB image
-    """
-    try:
-        # RGB raw image to OpenCV bgr MAT format
-        cv_image = CvBridge().imgmsg_to_cv2(raw_image, 'bgr8')
+        except Exception as CvBridgeError:
+            print('Error during image conversion: ', CvBridgeError)
 
-        # Store image
-        store(cv_image)
+    def setDepthImage(self, depth_image):
+        self.depth_image = depth_image
 
-        # Send detection request to service
-        rospy.loginfo("Requesting detection service on converted image...")
-        requestDetection("request")
+    def getDepthImage(self):
+        return self.depth_image
 
-    except Exception as CvBridgeError:
-        print('Error during image conversion: ', CvBridgeError)
+    # Raw to OpenCV conversion
+    def getDepths(self, msg):
+        """
+            Receives detections and
+            fetches their respective
+            distances from the depth
+            map, building a Distances
+            message.
+
+            Arguments:
+                param1: Detections
+
+            Returns:
+                Distances: Distances message
+        """
+        # Access details about detection in the msg
+        print(msg.detections.detections)
+        # if msg.detections.detections:
+        #     for detail in msg.detections.detections.details:
+        #         # Create distance message
+        #         # and populate it with depth
+        #         # information
+        #         distance = Distance()
+        #         distance.ID = detail.ID
+        #         distance.rgb_x = detail.rgb_x
+        #         distance.rgb_y = detail.rgb_y
+        #         distance.distance = self.getDepthImage()[detail.rgb_x, detail.rgb_y]
+        #
+        #         self.msg_distances.distances.append(distance)
+        #
+        return RequestDepthResponse(self.msg_distances)
 
 def main(args):
 
     # Initialise node
-    rospy.init_node('conversion', anonymous=True)
+    rospy.init_node('depths_server', anonymous=True)
 
     try:
-        # Subscribe to TIAGo's image_raw topic
-        image_raw = rospy.Subscriber('xtion/rgb/image_raw', Image, toMAT)
+        # Initialise
+        dr = DepthRetrieval()
+
+        rospy.loginfo("Warm-up data...")
+        rospy.sleep(3)
+
+        # Detection service
+        service = rospy.Service('detections_distances', RequestDepth, dr.getDepths)
 
         # Spin it baby !
         rospy.spin()

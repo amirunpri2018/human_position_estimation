@@ -12,28 +12,21 @@ import cv2
 import sys
 import rospy
 
-# Path module
 from pathlib import Path
-
-# Import ROS Image data type
 from sensor_msgs.msg import Image
-
-# Import cv_bridge (ROS interface for conversion)
 from cv_bridge import CvBridge, CvBridgeError
-
-# Custom service message
 from human_aware_robot_navigation.srv import *
 
 def requestDetection(req):
     """
-        Requests detection
-        to service module.
+        Sends a service request to
+        the people detection module.
 
         Arguments:
-            param1: request string
+            param1: String
 
         Returns:
-            int: Service response (positive, negative)
+            int: Service response (positive: 0, negative: 1)
     """
     # Wait for service to come alive
     rospy.wait_for_service('detection')
@@ -50,7 +43,7 @@ def requestDetection(req):
         return res.response
 
     except Exception as e:
-        raise
+        rospy.loginfo("Error during human detection request: %s", e)
 
 # Raw to OpenCV conversion
 def store(cv_image):
@@ -77,7 +70,9 @@ def toMAT(raw_image):
         # RGB raw image to OpenCV bgr MAT format
         cv_image = CvBridge().imgmsg_to_cv2(raw_image, 'bgr8')
 
-        # Store image
+        # Store image in
+        # the data folder
+        # of the directory
         store(cv_image)
 
         # Send detection request to service

@@ -5,7 +5,8 @@
 
     ROS service that takes as input
     an image in a MAT format, and
-    returns a frame with detections.
+    returns a frame with detections
+    and their respective centre points.
 """
 
 # Modules
@@ -18,13 +19,8 @@ import rospy
 import imutils
 import numpy as np
 
-# Path module
 from pathlib import Path
-
-# Import ROS Image data type
 from sensor_msgs.msg import Image
-
-# Custom detection messages
 from human_aware_robot_navigation.msg import *
 from human_aware_robot_navigation.srv import *
 
@@ -40,15 +36,15 @@ class PersonDetection:
         # Confidence (for detection)
         self.confidence = 0.7
 
+        # Publishing rate
+        self.rate = rospy.Rate(10)
+
         # Number of human detections
         self.number_of_detections = 0
 
         # Detection messages
         self.msg_detection = Detection()
         self.msg_detections = Detections()
-
-        # Publishing rate
-        self.rate = rospy.Rate(10)
 
         # Constant path
         self.path = str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0])
@@ -68,6 +64,9 @@ class PersonDetection:
 
         # Publisher (custom detection message)
         self.detection_pub = rospy.Publisher('person_detection', Detections)
+
+        # Publisher (custom detection message)
+        self.depth_pub = rospy.Publisher('distances', Distances)
 
         print("[INFO] Successful Initialisation")
 
@@ -111,9 +110,6 @@ class PersonDetection:
             # filter out weak detections by ensuring the `confidence` is
             # greater than the minimum confidence
             if confidence > self.confidence and idx == self.target:
-                # Human detections counter
-                self.number_of_detections += 1
-
                 # `detections`, then compute the (x, y)-coordinates of
                 # the bounding box for the object
                 box = detections[0, 0, i, 3:7] * np.array([w, h, w, h])
@@ -131,17 +127,16 @@ class PersonDetection:
 
                 # Get centre point in the rectangle
                 centre_point = self.getCentre(top_left, bottom_right)
-                print("Top left: ", top_left)
-                print("Bottom right: ", bottom_right)
+                # print("Top left: ", top_left)
+                # print("Bottom right: ", bottom_right)
                 print("Centre point: ", centre_point)
 
                 # Populate Details message
                 details = Details()
-                details.confidence = confidence
-                details.height = 480
-                details.width = 640
+                details.ID = self.number_of_detections
                 details.rgb_x = centre_point[0]
                 details.rgb_y = centre_point[1]
+                details.confidence = confidence
 
                 # Populate Detection message
                 self.msg_detection.details.append(details)
@@ -149,8 +144,11 @@ class PersonDetection:
                 # Draw circle
                 cv2.circle(frame, centre_point, 4, (0,0,255), -1)
 
-                # Save frame
-                self.store(frame)
+                # Human detections counter
+                self.number_of_detections += 1
+
+        # Save frame
+        self.store(frame)
 
         # Publish message
         self.publishDetections()
@@ -158,18 +156,52 @@ class PersonDetection:
         # Return service response
         return RequestDetectionResponse("success")
 
+    def requestDepths(self, detections):
+        """
+            ROS service that requests the
+            depth distance of the detections
+            from the RGBD-optical frame.
+
+            Arguments:
+                detections: RGB detections rgb position
+        """
+        # Wait for service to come alive
+        rospy.wait_for_service('detections_distances')
+
+        try:
+            # Build request
+            request = rospy.ServiceProxy('detections_distances', RequestDepth)
+
+            # Get response from service
+            res = request(detections)
+
+            print("Response: ", res)
+
+            # Response
+            rospy.loginfo("Detection service: %s", res.response)
+            return res.response
+
+        except Exception as e:
+            rospy.loginfo("Error during human detection request: %s", e)
+
     def publishDetections(self):
         """
-            Populates detections array,
-            sends it and clears it afterwards
-            along with the detection array.
+            Populates detections array, requests
+            depth measurements for each detection
+            and publishes the topics. Clears data
+            afterwards.
         """
-        # Populate detections (array of detection)
+        # Populate detections message (array of detection)
         self.msg_detections.detections.append(self.msg_detection)
         self.msg_detections.number_of_detections = self.number_of_detections
 
+        # Request depth data
+        rospy.loginfo("Requesting depth data for the detections...")
+        depth_res = self.requestDepths(self.msg_detections)
+
         # Publish detections
         self.detection_pub.publish(self.msg_detections)
+        self.depth_pub.publish(depth_res)
 
         # Clean detections and detection arrays
         self.msg_detection = Detection()
