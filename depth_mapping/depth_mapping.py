@@ -10,6 +10,7 @@
 import os
 import cv2
 import sys
+import math
 import rospy
 import numpy as np
 
@@ -19,102 +20,69 @@ from cv_bridge import CvBridge, CvBridgeError
 from human_aware_robot_navigation.srv import *
 from human_aware_robot_navigation.msg import *
 
-class DepthRetrieval:
+# def printDetails(self, image):
+#     print("Height: ", image.height)
+#     print("Width: ", image.width)
+#     print("Encoding: ", image.encoding)
+#     print("Step: ", image.step)
 
-    def __init__(self):
-        """
-            Constructor.
-        """
-        # Global converted depth_image
-        self.depth_image = None
+# # Raw to OpenCV conversion
+# def store(self, cv_image):
+#     """
+#         Stores the converted cv_image
+#         in memory to be further processed
+#         by a different node.
+#
+#         Arguments:
+#             param1: MAT image
+#     """
+#     cv2.imwrite(self.path + "/data/depth_image/depth_image.png", cv_image)
 
-        # Custom distances message
-        self.msg_distances = Distances()
+def getDepths(msg):
+    """
+        Receives detections and
+        fetches their respective
+        distances from the depth
+        map, building a Distances
+        message.
 
-        # Constant path
-        self.path = str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0])
+        Arguments:
+            param1: Detections
 
-        # Depth image subscriber
-        self.depth_sub = rospy.Subscriber('/xtion/depth/image_raw', Image, self.convert)
+        Returns:
+            Distances: Distances message
+    """
+    # Custom distances message
+    distances = Distances()
 
-    # Raw to OpenCV conversion
-    def store(self, cv_image):
-        """
-            Stores the converted cv_image
-            in memory to be further processed
-            by a different node.
+    # Access depth image
+    depth_image = self.getDepthImage()
 
-            Arguments:
-                param1: MAT image
-        """
-        cv2.imwrite(self.path + "/data/depth_image/depth_image.jpg", cv_image)
+    if msg.req.number_of_detections > 0:
+        for detection in msg.req.detections:
+            # print(detection)
+            for detail in detection.details:
+                print("Detail: ", detail)
+                distance = Distance()
+                distance.ID = detail.ID
+                distance.rgb_x = detail.rgb_x
+                distance.rgb_y = detail.rgb_y
+                distance.distance = depth_image[detail.rgb_x, detail.rgb_x] if not math.isnan(depth_image[detail.rgb_x, detail.rgb_x]) else None
+                distances.distances.append(distance)
 
-    def convert(self, depth_raw_image):
-        try:
-            # Depth raw image to OpenCV format
-            depth_image = CvBridge().imgmsg_to_cv2(depth_raw_image, 'passthrough')
-
-            # Save greyscale image to memore
-            # N.B: This is why we multiply by 255
-            self.store(depth_image * 255)
-
-            self.setDepthImage(depth_image)
-
-        except Exception as CvBridgeError:
-            print('Error during image conversion: ', CvBridgeError)
-
-    def setDepthImage(self, depth_image):
-        self.depth_image = depth_image
-
-    def getDepthImage(self):
-        return self.depth_image
-
-    # Raw to OpenCV conversion
-    def getDepths(self, msg):
-        """
-            Receives detections and
-            fetches their respective
-            distances from the depth
-            map, building a Distances
-            message.
-
-            Arguments:
-                param1: Detections
-
-            Returns:
-                Distances: Distances message
-        """
-        # Access details about detection in the msg
-        print(msg.detections.detections)
-        # if msg.detections.detections:
-        #     for detail in msg.detections.detections.details:
-        #         # Create distance message
-        #         # and populate it with depth
-        #         # information
-        #         distance = Distance()
-        #         distance.ID = detail.ID
-        #         distance.rgb_x = detail.rgb_x
-        #         distance.rgb_y = detail.rgb_y
-        #         distance.distance = self.getDepthImage()[detail.rgb_x, detail.rgb_y]
-        #
-        #         self.msg_distances.distances.append(distance)
-        #
-        return RequestDepthResponse(self.msg_distances)
+    return RequestDepthResponse(distances)
 
 def main(args):
 
     # Initialise node
-    rospy.init_node('depths_server', anonymous=True)
+    rospy.init_node('mapping', anonymous=True)
 
     try:
-        # Initialise
-        dr = DepthRetrieval()
-
         rospy.loginfo("Warm-up data...")
-        rospy.sleep(3)
+        rospy.sleep(2)
 
         # Detection service
-        service = rospy.Service('detections_distances', RequestDepth, dr.getDepths)
+        service = rospy.Service('rgb_to_depth_mapping', RequestDepth, getDepths)
 
         # Spin it baby !
         rospy.spin()

@@ -23,6 +23,7 @@ from pathlib import Path
 from sensor_msgs.msg import Image
 from human_aware_robot_navigation.msg import *
 from human_aware_robot_navigation.srv import *
+from message_filters import TimeSynchronizer, Subscriber
 
 class PersonDetection:
 
@@ -30,16 +31,19 @@ class PersonDetection:
         """
             Constructor.
         """
-        # Detection target (person)
+        # Detection target ID (person)
         self.target = 15
 
-        # Confidence (for detection)
-        self.confidence = 0.7
+        # Minimum confidence for acceptable detections
+        self.confidence = 0.5
+
+        # Converted depth_image
+        self.depth_image = None
 
         # Publishing rate
         self.rate = rospy.Rate(10)
 
-        # Number of human detections
+        # Number of detections
         self.number_of_detections = 0
 
         # Detection messages
@@ -63,7 +67,7 @@ class PersonDetection:
                                             self.path + "/data/nn_params/MobileNetSSD_deploy.caffemodel")
 
         # Publisher (custom detection message)
-        self.detection_pub = rospy.Publisher('person_detection', Detections)
+        self.detection_pub = rospy.Publisher('detections', Detections)
 
         # Publisher (custom detection message)
         self.depth_pub = rospy.Publisher('distances', Distances)
@@ -132,14 +136,14 @@ class PersonDetection:
                 print("Centre point: ", centre_point)
 
                 # Populate Details message
-                details = Details()
-                details.ID = self.number_of_detections
-                details.rgb_x = centre_point[0]
-                details.rgb_y = centre_point[1]
-                details.confidence = confidence
+                detail = Details()
+                detail.ID = self.number_of_detections
+                detail.rgb_x = centre_point[0]
+                detail.rgb_y = centre_point[1]
+                detail.confidence = confidence
 
                 # Populate Detection message
-                self.msg_detection.details.append(details)
+                self.msg_detection.details.append(detail)
 
                 # Draw circle
                 cv2.circle(frame, centre_point, 4, (0,0,255), -1)
@@ -155,34 +159,6 @@ class PersonDetection:
 
         # Return service response
         return RequestDetectionResponse("success")
-
-    def requestDepths(self, detections):
-        """
-            ROS service that requests the
-            depth distance of the detections
-            from the RGBD-optical frame.
-
-            Arguments:
-                detections: RGB detections rgb position
-        """
-        # Wait for service to come alive
-        rospy.wait_for_service('detections_distances')
-
-        try:
-            # Build request
-            request = rospy.ServiceProxy('detections_distances', RequestDepth)
-
-            # Get response from service
-            res = request(detections)
-
-            print("Response: ", res)
-
-            # Response
-            rospy.loginfo("Detection service: %s", res.response)
-            return res.response
-
-        except Exception as e:
-            rospy.loginfo("Error during human detection request: %s", e)
 
     def publishDetections(self):
         """
@@ -210,6 +186,31 @@ class PersonDetection:
         # Clear number of detections
         self.number_of_detections = 0
 
+    def requestDepths(self, detections):
+        """
+            ROS service that requests the
+            depth distance of the detections
+            from the RGBD-optical frame.
+
+            Arguments:
+                detections: RGB detections rgb position
+        """
+        # Wait for service to come alive
+        rospy.wait_for_service('distance')
+
+        try:
+            # Build request
+            request = rospy.ServiceProxy('distance', RequestDepth)
+
+            # Get response from service
+            response = request(detections)
+
+            # Response
+            return response.res
+
+        except Exception as e:
+            rospy.loginfo("Error during human detection request: %s", e)
+
     def getDetectionObject(self, confidence, rgb_x, rgb_y):
         """
             Detection object for
@@ -234,7 +235,7 @@ class PersonDetection:
             Returns:
                 image: MAT image
         """
-        return cv2.imread(self.path + "/data/converted/image.jpg")
+        return cv2.imread(self.path + "/data/converted/image.png")
 
     def store(self, frame):
         """
@@ -245,7 +246,7 @@ class PersonDetection:
             Arguments:
                 param1: MAT image with detection boxes
         """
-        cv2.imwrite(self.path + "/data/detections/detections.jpg", frame)
+        cv2.imwrite(self.path + "/data/detections/detections.png", frame)
 
     def getCentre(self, tl, br):
         """
@@ -266,10 +267,47 @@ class PersonDetection:
         # Return centre
         return (tl[0] + int(width * 0.5), tl[1] + int(height * 0.5))
 
+    def callback(self, depth_raw_image):
+        """
+            Converts depth image into
+            a floating point numpy array
+            of meter values.
+        """
+        try:
+            # self.printDetails(depth_raw_image)
+
+            # Depth raw image to OpenCV format
+            depth_image = CvBridge().imgmsg_to_cv2(depth_raw_image, '32FC1')
+            # cv2.normalize(depth_image, depth_image, 0, 1, cv2.NORM_MINMAX)
+            # print("Converted: ", depth_image)
+
+            # Save greyscale image to memore
+            # N.B: This is why we multiply by 255
+            # self.store(depth_image**255)
+
+            self.setDepthImage(depth_image)
+
+        except Exception as CvBridgeError:
+            print('Error during image conversion: ', CvBridgeError)
+
+    def setDepthImage(self, depth_image):
+        """
+            Stores converted
+            depth image.
+        """
+        self.depth_image = depth_image
+
+    # def getDepthImage(self):
+    #     """
+    #         Returns converted
+    #         depth image.
+    #     """
+    #     return self.depth_image
+
 def main(args):
 
     # Initialise node
-    rospy.init_node('detection_server', anonymous=True)
+    rospy.init_node('person_detection', anonymous=True)
 
     try:
         # Initialise

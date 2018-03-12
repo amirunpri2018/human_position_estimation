@@ -3,7 +3,7 @@
 """
     The following script converts
     the ROS std_msgs/Image type to
-    the OpenCV MAT format.
+    OpenCV MAT format.
 """
 
 # Modules
@@ -11,22 +11,29 @@ import os
 import cv2
 import sys
 import rospy
+import math
+import message_filters
 
+# Path library
 from pathlib import Path
-from sensor_msgs.msg import Image
+
+# OpenCV-ROS bridge
 from cv_bridge import CvBridge, CvBridgeError
+
+# Messages for requests and subscriptions
+from sensor_msgs.msg import Image
 from human_aware_robot_navigation.srv import *
 
 def requestDetection(req):
     """
         Sends a service request to
-        the people detection module.
+        the person detection module.
 
         Arguments:
-            param1: String
+            param1: Request string (required by the msg)
 
         Returns:
-            int: Service response (positive: 0, negative: 1)
+            string: Service response (success or not)
     """
     # Wait for service to come alive
     rospy.wait_for_service('detection')
@@ -36,60 +43,81 @@ def requestDetection(req):
         request = rospy.ServiceProxy('detection', RequestDetection)
 
         # Get response from service
-        res = request(req)
+        response = request(req)
 
-        # Response
-        rospy.loginfo("Detection service: %s", res.response)
-        return res.response
+        # Access the response field of the custom msg
+        rospy.loginfo("Detection service: %s", response.res)
+        return response.res
 
     except Exception as e:
         rospy.loginfo("Error during human detection request: %s", e)
 
-# Raw to OpenCV conversion
 def store(cv_image):
     """
-        Stores the converted cv_image
-        in memory to be further processed
-        by a different node.
+        Stores the converted raw image from
+        the subscription and writes it to
+        memory.
 
         Arguments:
-            param1: MAT image
+            MAT: OpenCV formatted image
     """
-    cv2.imwrite(str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0]) + "/data/converted/image.jpg", cv_image)
+    cv2.imwrite(str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0]) + "/data/converted/image.png", cv_image)
 
-# Raw to OpenCV conversion
-def toMAT(raw_image):
+def toMAT(rgb_image):
     """
         Converts raw RGB image
-        into MAT format.
+        into OpenCV's MAT format.
 
         Arguments:
-            param1: raw RGB image
+            param1: raw_image (from camera feed)
     """
     try:
-        # RGB raw image to OpenCV bgr MAT format
-        cv_image = CvBridge().imgmsg_to_cv2(raw_image, 'bgr8')
-
-        # Store image in
-        # the data folder
-        # of the directory
-        store(cv_image)
-
-        # Send detection request to service
-        rospy.loginfo("Requesting detection service on converted image...")
-        requestDetection("request")
+        cv_image = CvBridge().imgmsg_to_cv2(rgb_image, 'bgr8')
+        return cv_image
 
     except Exception as CvBridgeError:
         print('Error during image conversion: ', CvBridgeError)
 
+def processSubscriptions(rgb_image, depth_image):
+    """
+        Callback for the TimeSynchronizer
+        that receives both the rgb raw image
+        and the depth image, respectively
+        running the detection module on the
+        former and the mappin process on the
+        former at a later stage in the chain.
+
+        Arguments:
+            sensor_msgs/Image: The RGB raw image
+            sensor_msgs/Image: The depth image
+    """
+    # Check that subscriptions data are synchronized
+    print("Received rgb and depth")
+    # print(abs(rgb_image.header.stamp - depth_image.header.stamp))
+    # print("Got some stuff in here.")
+
+    # Processing the rgb image
+    # rgb_cv_image = toMAT(rgb_image)
+    # store(rgb_cv_image)
+
+    # Request services
+    # Send detection request on pre-processed image
+    # rospy.loginfo("Requesting detection and mapping services")
+    # requestDetection("req")
+
 def main(args):
 
     # Initialise node
-    rospy.init_node('conversion', anonymous=True)
+    rospy.init_node('subscriptions_sync', anonymous=True)
 
     try:
-        # Subscribe to TIAGo's image_raw topic
-        image_raw = rospy.Subscriber('xtion/rgb/image_raw', Image, toMAT)
+        # Subscriptions (via Subscriber package)
+        rgb_sub   = message_filters.Subscriber("/xtion/rgb/image_raw", Image)
+        depth_sub = message_filters.Subscriber("/xtion/depth/image", Image)
+
+        # Synchronize subscriptions
+        ats = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub], queue_size=5, slop=0.3)
+        ats.registerCallback(processSubscriptions)
 
         # Spin it baby !
         rospy.spin()
