@@ -24,16 +24,19 @@ from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 from human_aware_robot_navigation.srv import *
 
+# Constant path
+PATH = str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0])
+
 def requestDetection(req):
     """
         Sends a service request to
         the person detection module.
 
         Arguments:
-            param1: Request string (required by the msg)
+            sensor_msgs/Image: Depth image
 
         Returns:
-            string: Service response (success or not)
+            string: Service response
     """
     # Wait for service to come alive
     rospy.wait_for_service('detection')
@@ -47,7 +50,7 @@ def requestDetection(req):
 
         # Access the response field of the custom msg
         rospy.loginfo("Detection service: %s", response.res)
-        return response.res
+        # return response.res
 
     except Exception as e:
         rospy.loginfo("Error during human detection request: %s", e)
@@ -61,7 +64,7 @@ def store(cv_image):
         Arguments:
             MAT: OpenCV formatted image
     """
-    cv2.imwrite(str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0]) + "/data/converted/image.png", cv_image)
+    cv2.imwrite(PATH + "/data/converted/image.png", cv_image)
 
 def toMAT(rgb_image):
     """
@@ -69,7 +72,10 @@ def toMAT(rgb_image):
         into OpenCV's MAT format.
 
         Arguments:
-            param1: raw_image (from camera feed)
+            sensor_msgs/Image: RGB raw image
+
+        Returns:
+            MAT: OpenCV BGR8 MAT format
     """
     try:
         cv_image = CvBridge().imgmsg_to_cv2(rgb_image, 'bgr8')
@@ -91,19 +97,14 @@ def processSubscriptions(rgb_image, depth_image):
             sensor_msgs/Image: The RGB raw image
             sensor_msgs/Image: The depth image
     """
-    # Check that subscriptions data are synchronized
-    print("Received rgb and depth")
-    # print(abs(rgb_image.header.stamp - depth_image.header.stamp))
-    # print("Got some stuff in here.")
-
+    print("Got depth and rgb.")
     # Processing the rgb image
-    # rgb_cv_image = toMAT(rgb_image)
-    # store(rgb_cv_image)
+    rgb_cv_image = toMAT(rgb_image)
+    store(rgb_cv_image)
 
     # Request services
-    # Send detection request on pre-processed image
-    # rospy.loginfo("Requesting detection and mapping services")
-    # requestDetection("req")
+    rospy.loginfo("Requesting detection and mapping services")
+    requestDetection(depth_image)
 
 def main(args):
 
@@ -116,7 +117,7 @@ def main(args):
         depth_sub = message_filters.Subscriber("/xtion/depth/image", Image)
 
         # Synchronize subscriptions
-        ats = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub], queue_size=5, slop=0.3)
+        ats = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub], queue_size=5, slop=0.4)
         ats.registerCallback(processSubscriptions)
 
         # Spin it baby !

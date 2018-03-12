@@ -38,6 +38,29 @@ from human_aware_robot_navigation.msg import *
 #     """
 #     cv2.imwrite(self.path + "/data/depth_image/depth_image.png", cv_image)
 
+def toMat(depth_raw_image):
+    """
+        Converts depth image into
+        a floating point numpy array
+        of meter values.
+    """
+    try:
+        # self.printDetails(depth_raw_image)
+
+        # Depth raw image to OpenCV format
+        depth_image = CvBridge().imgmsg_to_cv2(depth_raw_image, '32FC1')
+        # cv2.normalize(depth_image, depth_image, 0, 1, cv2.NORM_MINMAX)
+        # print("Converted: ", depth_image)
+
+        # Save greyscale image to memore
+        # N.B: This is why we multiply by 255
+        # self.store(depth_image**255)
+
+        self.setDepthImage(depth_image)
+
+    except Exception as CvBridgeError:
+        print('Error during image conversion: ', CvBridgeError)
+
 def getDepths(msg):
     """
         Receives detections and
@@ -55,20 +78,22 @@ def getDepths(msg):
     # Custom distances message
     distances = Distances()
 
-    # Access depth image
-    depth_image = self.getDepthImage()
+    print("Received message: depth")
 
-    if msg.req.number_of_detections > 0:
-        for detection in msg.req.detections:
-            # print(detection)
-            for detail in detection.details:
-                print("Detail: ", detail)
-                distance = Distance()
-                distance.ID = detail.ID
-                distance.rgb_x = detail.rgb_x
-                distance.rgb_y = detail.rgb_y
-                distance.distance = depth_image[detail.rgb_x, detail.rgb_x] if not math.isnan(depth_image[detail.rgb_x, detail.rgb_x]) else None
-                distances.distances.append(distance)
+    # # Access depth image
+    # depth_image = self.getDepthImage()
+    #
+    # if msg.req.number_of_detections > 0:
+    #     for detection in msg.req.detections:
+    #         # print(detection)
+    #         for detail in detection.details:
+    #             print("Detail: ", detail)
+    #             distance = Distance()
+    #             distance.ID = detail.ID
+    #             distance.rgb_x = detail.rgb_x
+    #             distance.rgb_y = detail.rgb_y
+    #             distance.distance = depth_image[detail.rgb_x, detail.rgb_x] if not math.isnan(depth_image[detail.rgb_x, detail.rgb_x]) else None
+    #             distances.distances.append(distance)
 
     return RequestDepthResponse(distances)
 
@@ -78,9 +103,6 @@ def main(args):
     rospy.init_node('mapping', anonymous=True)
 
     try:
-        rospy.loginfo("Warm-up data...")
-        rospy.sleep(2)
-
         # Detection service
         service = rospy.Service('rgb_to_depth_mapping', RequestDepth, getDepths)
 

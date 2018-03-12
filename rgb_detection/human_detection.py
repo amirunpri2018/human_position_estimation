@@ -23,7 +23,6 @@ from pathlib import Path
 from sensor_msgs.msg import Image
 from human_aware_robot_navigation.msg import *
 from human_aware_robot_navigation.srv import *
-from message_filters import TimeSynchronizer, Subscriber
 
 class PersonDetection:
 
@@ -47,8 +46,7 @@ class PersonDetection:
         self.number_of_detections = 0
 
         # Detection messages
-        self.msg_detection = Detection()
-        self.msg_detections = Detections()
+        self.detections = Detections()
 
         # Constant path
         self.path = str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0])
@@ -67,10 +65,10 @@ class PersonDetection:
                                             self.path + "/data/nn_params/MobileNetSSD_deploy.caffemodel")
 
         # Publisher (custom detection message)
-        self.detection_pub = rospy.Publisher('detections', Detections)
+        self.detection_pub = rospy.Publisher('detections', Detections, queue_size=5)
 
         # Publisher (custom detection message)
-        self.depth_pub = rospy.Publisher('distances', Distances)
+        self.depth_pub = rospy.Publisher('distances', Distances, queue_size=5)
 
         print("[INFO] Successful Initialisation")
 
@@ -80,39 +78,35 @@ class PersonDetection:
             detections bounding boxes.
 
             Params:
-                req: Service request
+                sensor_msgs/Image: Depth image syncd with RGB
 
             Ouput:
                 int: Result of the service
         """
-        # Load image to be processed
         print("[INFO] Loading Image...")
         frame = self.load_img()
 
         # Resize image to be maximum 400px wide
         frame = imutils.resize(frame, width = 400)
 
-        # grab the frame dimensions and convert it to a blob
+        # Blob conversion (detecion purposes)
         (h, w) = frame.shape[:2]
         blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 0.007843, (300, 300), 127.5)
 
-        # pass the blob through the network and obtain the detections and
-        # predictions
+        # Run feed-forward
         print("[INFO] Detection...")
         self.net.setInput(blob)
         detections = self.net.forward()
 
         # loop over the detections
         for i in np.arange(0, detections.shape[2]):
-            # extract the confidence (i.e., probability) associated with
-            # the prediction
+            # Get detection probability
             confidence = detections[0, 0, i, 2]
 
-            # extract the index of the class label from the
+            # Get ID of the detection object
             idx = int(detections[0, 0, i, 1])
 
-            # filter out weak detections by ensuring the `confidence` is
-            # greater than the minimum confidence
+            # Filter out non-human detection with low confidence
             if confidence > self.confidence and idx == self.target:
                 # `detections`, then compute the (x, y)-coordinates of
                 # the bounding box for the object
@@ -123,30 +117,30 @@ class PersonDetection:
                 top_left = (startX, startY)
                 bottom_right = (endX, endY)
 
-                # draw the prediction on the frame
+                # draw bounding box
                 label = "{}: {:.2f}%".format(self.targets[idx], confidence * 100)
                 cv2.rectangle(frame, top_left, bottom_right, self.colours[idx], 2)
                 y = startY - 15 if startY - 15 > 15 else startY + 15
                 cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.colours[idx], 2)
 
-                # Get centre point in the rectangle
+                # Get centre point of the rectangle and draw it
                 centre_point = self.getCentre(top_left, bottom_right)
+                cv2.circle(frame, centre_point, 4, (0,0,255), -1)
                 # print("Top left: ", top_left)
                 # print("Bottom right: ", bottom_right)
-                print("Centre point: ", centre_point)
+                # print("Centre point: ", centre_point)
 
-                # Populate Details message
-                detail = Details()
-                detail.ID = self.number_of_detections
-                detail.rgb_x = centre_point[0]
-                detail.rgb_y = centre_point[1]
-                detail.confidence = confidence
+                # Create a custom details
+                # message for every good
+                # detection
+                detection = Detection()
+                detection.ID = self.number_of_detections
+                detection.rgb_x = centre_point[0]
+                detection.rgb_y = centre_point[1]
+                detection.confidence = confidence
 
-                # Populate Detection message
-                self.msg_detection.details.append(detail)
-
-                # Draw circle
-                cv2.circle(frame, centre_point, 4, (0,0,255), -1)
+                # Aggregate the detection to the others
+                self.detections.array.append(detection)
 
                 # Human detections counter
                 self.number_of_detections += 1
@@ -154,39 +148,16 @@ class PersonDetection:
         # Save frame
         self.store(frame)
 
-        # Publish message
-        self.publishDetections()
+        # Add number_of_detections item
+        # to the detections message
+        self.detections.number_of_detections = self.number_of_detections
 
-        # Return service response
-        return RequestDetectionResponse("success")
+        # Request depth mapping
+        # on the detections
+        rospy.loginfo("Requesting depth mapping for the detections...")
+        self.requestMapping(self.detections, req.depth)
 
-    def publishDetections(self):
-        """
-            Populates detections array, requests
-            depth measurements for each detection
-            and publishes the topics. Clears data
-            afterwards.
-        """
-        # Populate detections message (array of detection)
-        self.msg_detections.detections.append(self.msg_detection)
-        self.msg_detections.number_of_detections = self.number_of_detections
-
-        # Request depth data
-        rospy.loginfo("Requesting depth data for the detections...")
-        depth_res = self.requestDepths(self.msg_detections)
-
-        # Publish detections
-        self.detection_pub.publish(self.msg_detections)
-        self.depth_pub.publish(depth_res)
-
-        # Clean detections and detection arrays
-        self.msg_detection = Detection()
-        self.msg_detections = Detections()
-
-        # Clear number of detections
-        self.number_of_detections = 0
-
-    def requestDepths(self, detections):
+    def requestMapping(self, detections, depth_image):
         """
             ROS service that requests the
             depth distance of the detections
@@ -196,17 +167,27 @@ class PersonDetection:
                 detections: RGB detections rgb position
         """
         # Wait for service to come alive
-        rospy.wait_for_service('distance')
+        rospy.wait_for_service('rgb_to_depth_mapping')
 
         try:
             # Build request
-            request = rospy.ServiceProxy('distance', RequestDepth)
+            request = rospy.ServiceProxy('rgb_to_depth_mapping', RequestDepth)
 
             # Get response from service
-            response = request(detections)
+            response = request(detections, depth_image)
+            # Access the response field of the custom msg
+            rospy.loginfo("Mapping service: %s", response.distances)
+
+            # Publish detections
+            self.detection_pub.publish(self.detections)
+            self.depth_pub.publish(response.distances)
+
+            # Clean
+            self.detections = Detections()
+            self.number_of_detections = 0
 
             # Response
-            return response.res
+            return RequestDetectionResponse("success")
 
         except Exception as e:
             rospy.loginfo("Error during human detection request: %s", e)
@@ -254,11 +235,11 @@ class PersonDetection:
             of the bounding box.
 
             Arguments:
-                param1: Top left corner of the rectangle
-                param2: Bottom right corner of the rectangle
+                int: Top left corner of the rectangle
+                int: Bottom right corner of the rectangle
 
             Returns:
-                point: Centre point of the rectangle
+                tuple of ints: X and Y coordinate of centre point
         """
         # Compute distances
         width  = br[0] - tl[0]
@@ -266,43 +247,6 @@ class PersonDetection:
 
         # Return centre
         return (tl[0] + int(width * 0.5), tl[1] + int(height * 0.5))
-
-    def callback(self, depth_raw_image):
-        """
-            Converts depth image into
-            a floating point numpy array
-            of meter values.
-        """
-        try:
-            # self.printDetails(depth_raw_image)
-
-            # Depth raw image to OpenCV format
-            depth_image = CvBridge().imgmsg_to_cv2(depth_raw_image, '32FC1')
-            # cv2.normalize(depth_image, depth_image, 0, 1, cv2.NORM_MINMAX)
-            # print("Converted: ", depth_image)
-
-            # Save greyscale image to memore
-            # N.B: This is why we multiply by 255
-            # self.store(depth_image**255)
-
-            self.setDepthImage(depth_image)
-
-        except Exception as CvBridgeError:
-            print('Error during image conversion: ', CvBridgeError)
-
-    def setDepthImage(self, depth_image):
-        """
-            Stores converted
-            depth image.
-        """
-        self.depth_image = depth_image
-
-    # def getDepthImage(self):
-    #     """
-    #         Returns converted
-    #         depth image.
-    #     """
-    #     return self.depth_image
 
 def main(args):
 
