@@ -173,8 +173,6 @@ class PersonDetection:
 
             # Get response from service
             response = request(detections, depth_image)
-            # Access the response field of the custom msg
-            rospy.loginfo("Mapping service: %s", response.distances)
 
             # Publish detections
             self.detection_pub.publish(self.detections)

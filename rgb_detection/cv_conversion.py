@@ -97,7 +97,7 @@ def processSubscriptions(rgb_image, depth_image):
             sensor_msgs/Image: The RGB raw image
             sensor_msgs/Image: The depth image
     """
-    print("Got depth and rgb.")cv_depth_image[x,y]
+    print("Got depth and rgb.")
     # Processing the rgb image
     rgb_cv_image = toMAT(rgb_image)
     store(rgb_cv_image)
@@ -117,7 +117,7 @@ def main(args):
         depth_sub = message_filters.Subscriber("/xtion/depth/image", Image)
 
         # Synchronize subscriptions
-        ats = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub], queue_size=5, slop=0.3)
+        ats = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub], queue_size=5, slop=0.1)
         ats.registerCallback(processSubscriptions)
 
         # Spin it baby !

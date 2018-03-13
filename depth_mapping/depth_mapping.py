@@ -44,7 +44,7 @@ def toMat(depth_raw_image):
         cv_depth_image = CvBridge().imgmsg_to_cv2(depth_raw_image, '32FC1')
 
         # Store depth image
-        store(cv_depth_image)
+        # store(cv_depth_image)
 
         return cv_depth_image
 
@@ -72,12 +72,12 @@ def getDepths(req):
     cv_depth_image = toMat(req.depth)
 
     # Draw all valid points in the depth map
-    for x in range(cv_depth_image.shape[0]):
-        for y in range(cv_depth_image.shape[1]):
-            if not math.isnan(cv_depth_image[x,y]) and cv_depth_image[x,y] > 0:
-                cv2.circle(cv_depth_image, (x, y), 4, (255,255,255), -1)
-
-    cv2.imwrite(str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0]) + "/data/depth_image/depth_image_valid.png", cv_depth_image)
+    # for x in range(cv_depth_image.shape[0]):
+    #     for y in range(cv_depth_image.shape[1]):
+    #         if not math.isnan(cv_depth_image[x,y]) and cv_depth_image[x,y] > 0:
+    #             cv2.circle(cv_depth_image, (x, y), 4, (255,255,255), -1)
+    #
+    # cv2.imwrite(str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0]) + "/data/depth_image/depth_image_valid.png", cv_depth_image)
 
     # # Populate our distances array
     if req.detections.number_of_detections > 0:
@@ -96,19 +96,13 @@ def getDepths(req):
 
             # Convert all nan to zeros
             roi_depth_image = np.nan_to_num(roi_depth_image)
-            print("ROI shape: ", roi_depth_image.shape)
 
             # Compute average distance in the
             # bounding box
-            roi_sum = np.nansum(roi_depth_image)
-
-            print("Sum: ", roi_sum)
-            print("Size: ", roi_depth_image.size)
+            roi_sum = np.sum(roi_depth_image)
 
             # Average distance of the person
             distance.distance = roi_sum / roi_depth_image.size
-
-            print("Distance: " + str(roi_sum / roi_depth_image.size) + "\n")
 
             # Aggregate the distance to the
             # general distances array
