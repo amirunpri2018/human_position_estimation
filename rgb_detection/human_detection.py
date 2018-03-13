@@ -119,25 +119,23 @@ class PersonDetection:
 
                 # draw bounding box
                 label = "{}: {:.2f}%".format(self.targets[idx], confidence * 100)
-                cv2.rectangle(frame, top_left, bottom_right, self.colours[idx], 2)
+                roi = cv2.rectangle(frame, top_left, bottom_right, self.colours[idx], 2)
                 y = startY - 15 if startY - 15 > 15 else startY + 15
                 cv2.putText(frame, label, (startX, y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, self.colours[idx], 2)
 
                 # Get centre point of the rectangle and draw it
                 centre_point = self.getCentre(top_left, bottom_right)
                 cv2.circle(frame, centre_point, 4, (0,0,255), -1)
-                # print("Top left: ", top_left)
-                # print("Bottom right: ", bottom_right)
-                # print("Centre point: ", centre_point)
 
                 # Create a custom details
                 # message for every good
                 # detection
                 detection = Detection()
                 detection.ID = self.number_of_detections
-                detection.rgb_x = centre_point[0]
-                detection.rgb_y = centre_point[1]
-                detection.confidence = confidence
+                detection.width = bottom_right[0] - top_left[0]
+                detection.height = bottom_right[1] - top_left[1]
+                detection.top_left_x = top_left[0]
+                detection.top_left_y = top_left[1]
 
                 # Aggregate the detection to the others
                 self.detections.array.append(detection)
@@ -148,14 +146,14 @@ class PersonDetection:
         # Save frame
         self.store(frame)
 
-        # Add number_of_detections item
-        # to the detections message
+        # Add number_of_detections item to the detections message
         self.detections.number_of_detections = self.number_of_detections
 
-        # Request depth mapping
-        # on the detections
+        # Request depth mapping on the detections
         rospy.loginfo("Requesting depth mapping for the detections...")
         self.requestMapping(self.detections, req.depth)
+
+        return RequestDetectionResponse("success")
 
     def requestMapping(self, detections, depth_image):
         """
@@ -186,11 +184,8 @@ class PersonDetection:
             self.detections = Detections()
             self.number_of_detections = 0
 
-            # Response
-            return RequestDetectionResponse("success")
-
-        except Exception as e:
-            rospy.loginfo("Error during human detection request: %s", e)
+        except rospy.ServiceException as e:
+            rospy.loginfo("Depth service call failed: %s", e)
 
     def getDetectionObject(self, confidence, rgb_x, rgb_y):
         """

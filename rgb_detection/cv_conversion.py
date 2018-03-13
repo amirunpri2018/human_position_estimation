@@ -52,8 +52,8 @@ def requestDetection(req):
         rospy.loginfo("Detection service: %s", response.res)
         # return response.res
 
-    except Exception as e:
-        rospy.loginfo("Error during human detection request: %s", e)
+    except rospy.ServiceException as e:
+        rospy.loginfo("Detection service call failed: %s", e)
 
 def store(cv_image):
     """
@@ -97,7 +97,7 @@ def processSubscriptions(rgb_image, depth_image):
             sensor_msgs/Image: The RGB raw image
             sensor_msgs/Image: The depth image
     """
-    print("Got depth and rgb.")
+    print("Got depth and rgb.")cv_depth_image[x,y]
     # Processing the rgb image
     rgb_cv_image = toMAT(rgb_image)
     store(rgb_cv_image)
@@ -117,7 +117,7 @@ def main(args):
         depth_sub = message_filters.Subscriber("/xtion/depth/image", Image)
 
         # Synchronize subscriptions
-        ats = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub], queue_size=5, slop=0.4)
+        ats = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub], queue_size=5, slop=0.3)
         ats.registerCallback(processSubscriptions)
 
         # Spin it baby !
