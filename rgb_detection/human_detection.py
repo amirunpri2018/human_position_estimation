@@ -136,6 +136,8 @@ class PersonDetection:
                 detection.height = bottom_right[1] - top_left[1]
                 detection.top_left_x = top_left[0]
                 detection.top_left_y = top_left[1]
+                detection.centre_x = centre_point[0]
+                detection.centre_y = centre_point[1]
 
                 # Aggregate the detection to the others
                 self.detections.array.append(detection)

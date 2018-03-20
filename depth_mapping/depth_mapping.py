@@ -13,6 +13,7 @@ import sys
 import math
 import rospy
 import numpy as np
+np.set_printoptions(threshold='nan')
 
 from pathlib import Path
 from sensor_msgs.msg import Image
@@ -71,38 +72,42 @@ def getDepths(req):
     # Convert depth image into MAT
     cv_depth_image = toMat(req.depth)
 
-    # Draw all valid points in the depth map
-    # for x in range(cv_depth_image.shape[0]):
-    #     for y in range(cv_depth_image.shape[1]):
-    #         if not math.isnan(cv_depth_image[x,y]) and cv_depth_image[x,y] > 0:
-    #             cv2.circle(cv_depth_image, (x, y), 4, (255,255,255), -1)
-    #
-    # cv2.imwrite(str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0]) + "/data/depth_image/depth_image_valid.png", cv_depth_image)
-
-    # # Populate our distances array
+    # Populate our distances array
     if req.detections.number_of_detections > 0:
 
         # Iterate over the detections
         for detection in req.detections.array:
 
             # ROI cv_depth_image (around person)
-            roi_depth_image = cv_depth_image[detection.top_left_y:detection.top_left_y + detection.height,
-                                             detection.top_left_x:detection.top_left_x + detection.width]
+            roi = cv_depth_image[detection.top_left_y:detection.top_left_y + detection.height,
+                                 detection.top_left_x:detection.top_left_x + detection.width]
+
+            i = detection.centre_x
+            j = detection.centre_y
+            d = 15
+
+            # Centre neighbours
+            neighbours = cv_depth_image[i-d:i+d+1, j-d:j+d+1].flatten()
+            neighbours = neighbours[~np.isnan(neighbours)]
+            print(neighbours[~np.isnan(neighbours)])
+
+            # Filter depth image from invalid values (NaN)
+            roi = roi[~np.isnan(roi)]
+            print("ROI: ", roi[0].x)
+            # print(roi[~np.isnan(roi)])
 
             # Copy over detections items
             # for future 1 to 1 mapping
             distance = Distance()
             distance.ID = detection.ID
 
-            # Convert all nan to zeros
-            roi_depth_image = np.nan_to_num(roi_depth_image)
-
-            # Compute average distance in the
-            # bounding box
-            roi_sum = np.sum(roi_depth_image)
+            # Compute average distance
+            roi_sum = np.sum(roi)
+            # roi_sum = np.sum(neighbours)
 
             # Average distance of the person
-            distance.distance = roi_sum / roi_depth_image.size
+            distance.distance = roi_sum / roi.size
+            # distance.distance = roi_sum / neighbours.size
 
             # Aggregate the distance to the
             # general distances array

@@ -114,7 +114,7 @@ def main(args):
     try:
         # Subscriptions (via Subscriber package)
         rgb_sub   = message_filters.Subscriber("/xtion/rgb/image_raw", Image)
-        depth_sub = message_filters.Subscriber("/xtion/depth/image", Image)
+        depth_sub = message_filters.Subscriber("/xtion/depth_registered/image_raw", Image)
 
         # Synchronize subscriptions
         ats = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub], queue_size=5, slop=0.1)
