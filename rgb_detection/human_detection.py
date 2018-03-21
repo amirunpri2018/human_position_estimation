@@ -88,6 +88,7 @@ class PersonDetection:
 
         # Resize image to be maximum 400px wide
         frame = imutils.resize(frame, width = 400)
+        print("Frame shape: ", frame.shape)
 
         # Blob conversion (detecion purposes)
         (h, w) = frame.shape[:2]
@@ -127,17 +128,20 @@ class PersonDetection:
                 centre_point = self.getCentre(top_left, bottom_right)
                 cv2.circle(frame, centre_point, 4, (0,0,255), -1)
 
-                # Create a custom details
-                # message for every good
-                # detection
+                # Get 480x640 ratio points
+                centre_ratio_point = self.getRatioPoint(centre_point[0], centre_point[1])
+                top_left_ratio_point = self.getRatioPoint(top_left[0], top_left[1])
+                bottom_right_ratio_point = self.getRatioPoint(bottom_right[0], bottom_right[1])
+
+                # Detection info
                 detection = Detection()
                 detection.ID = self.number_of_detections
                 detection.width = bottom_right[0] - top_left[0]
                 detection.height = bottom_right[1] - top_left[1]
                 detection.top_left_x = top_left[0]
                 detection.top_left_y = top_left[1]
-                detection.centre_x = centre_point[0]
-                detection.centre_y = centre_point[1]
+                detection.centre_x = ratio_point[0]
+                detection.centre_y = ratio_point[1]
 
                 # Aggregate the detection to the others
                 self.detections.array.append(detection)
@@ -226,8 +230,9 @@ class PersonDetection:
 
     def getCentre(self, tl, br):
         """
-            Finds centre point
-            of the bounding box.
+            Finds centre point of the
+            bounding box with respect
+            to the 300x300 ratio.
 
             Arguments:
                 int: Top left corner of the rectangle
@@ -242,6 +247,20 @@ class PersonDetection:
 
         # Return centre
         return (tl[0] + int(width * 0.5), tl[1] + int(height * 0.5))
+
+    def getRatioPoint(self, x, y):
+        """
+            Find point in the
+            480x640 ratio.
+
+            Arguments:
+                int: 400x300 X coordinate (width)
+                int: 400x300 Y coordinate (height)
+
+            Returns:
+                tuple of ints: X and Y coordinate of centre point
+        """
+        return (int((x/400) * 640), int((y/300) * 480))
 
 def main(args):
 

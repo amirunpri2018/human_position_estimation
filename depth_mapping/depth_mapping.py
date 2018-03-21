@@ -82,9 +82,15 @@ def getDepths(req):
             roi = cv_depth_image[detection.top_left_y:detection.top_left_y + detection.height,
                                  detection.top_left_x:detection.top_left_x + detection.width]
 
+            # Store ROI coloured cv_depth_image
+
             i = detection.centre_x
             j = detection.centre_y
             d = 15
+
+            cv_depth_image[i-d:i+d+1, j-d:j+d+1] = 8
+
+            store(cv_depth_image)
 
             # Centre neighbours
             neighbours = cv_depth_image[i-d:i+d+1, j-d:j+d+1].flatten()
@@ -93,7 +99,7 @@ def getDepths(req):
 
             # Filter depth image from invalid values (NaN)
             roi = roi[~np.isnan(roi)]
-            print("ROI: ", roi[0].x)
+            print("ROI: ", roi[0])
             # print(roi[~np.isnan(roi)])
 
             # Copy over detections items

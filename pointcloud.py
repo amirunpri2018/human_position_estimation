@@ -24,6 +24,8 @@ from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, PointCloud2
 from human_aware_robot_navigation.srv import *
 
+from point_cloud2 import *
+
 # Constant path
 PATH = str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0])
 
@@ -106,20 +108,39 @@ def processSubscriptions(rgb_image, depth_image):
     rospy.loginfo("Requesting detection and mapping services")
     requestDetection(depth_image)
 
+def doIt(points):
+    """
+        Converts raw RGB image
+        into OpenCV's MAT format.
+
+        Arguments:
+            sensor_msgs/Image: RGB raw image
+
+        Returns:
+            MAT: OpenCV BGR8 MAT format
+    """
+    try:
+        # cv_image = CvBridge().imgmsg_to_cv2(rgb_image, 'bgr8')
+        # return cv_image
+        # print(points.height)
+        # print(points.width)
+        # print(points.fields)
+        generator = read_points(points, field_names=['x', 'y', 'z'], skip_nans=False, uvs=[])
+        # for point in generator:
+        #     print(point)
+        print(generator[0][0])
+
+    except Exception as e:
+        print('Error during image conversion: ', CvBridgeError)
+
 def main(args):
 
     # Initialise node
-    rospy.init_node('subscriptions_sync', anonymous=True)
+    rospy.init_node('pointcloud', anonymous=True)
 
     try:
         # Subscriptions (via Subscriber package)
-        rgb_sub   = message_filters.Subscriber("/xtion/rgb/image_raw", Image)
-        depth_sub = message_filters.Subscriber("/xtion/depth_registered/image", Image)
-        # point_sub = message_filters.Subscriber("/xtion/depth_registered/points", PointCloud2)
-
-        # Synchronize subscriptions
-        ats = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub], queue_size=5, slop=0.1)
-        ats.registerCallback(processSubscriptions)
+        point_sub = rospy.Subscriber("/xtion/depth_registered/points", PointCloud2, doIt)
 
         # Spin it baby !
         rospy.spin()
