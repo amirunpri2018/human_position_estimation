@@ -84,12 +84,14 @@ def getDepths(req):
             i = detection.centre_x
             j = detection.centre_y
 
+            print("Centre point: ", cv_depth_image[j,i])
+
             # Fetch window around the centre of the
             # bounding box and get rid of NaN values
             roi = cv_depth_image[j-d:j+d+1, i-d:i+d+1]
             roi = roi[~np.isnan(roi)]
 
-            print("ROI: ", roi)
+            # print("ROI: ", roi)
 
             # Copy over detections items
             # for future 1 to 1 mapping
