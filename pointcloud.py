@@ -125,13 +125,13 @@ def doIt(points):
         # print(points.height)
         # print(points.width)
         # print(points.fields)
-        generator = read_points(points, field_names=['x', 'y', 'z'], skip_nans=False, uvs=[])
+        # generator = read_points(points, field_names=['x', 'y', 'z'], skip_nans=False, uvs=[])
         # for point in generator:
         #     print(point)
-        print(generator[0][0])
+        print(points)
 
     except Exception as e:
-        print('Error during image conversion: ', CvBridgeError)
+        print('Error during image conversion: ', e)
 
 def main(args):
 
@@ -140,7 +140,7 @@ def main(args):
 
     try:
         # Subscriptions (via Subscriber package)
-        point_sub = rospy.Subscriber("/xtion/depth_registered/points", PointCloud2, doIt)
+        point_sub = rospy.Subscriber("/xtion/depth_registered/image", Image, doIt)
 
         # Spin it baby !
         rospy.spin()

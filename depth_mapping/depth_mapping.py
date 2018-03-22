@@ -78,42 +78,30 @@ def getDepths(req):
         # Iterate over the detections
         for detection in req.detections.array:
 
-            # ROI cv_depth_image (around person)
-            roi = cv_depth_image[detection.top_left_y:detection.top_left_y + detection.height,
-                                 detection.top_left_x:detection.top_left_x + detection.width]
-
-            # Store ROI coloured cv_depth_image
-
+            # Sliding window centre point
+            # and size of neighbours
+            d = 30
             i = detection.centre_x
             j = detection.centre_y
-            d = 15
 
-            cv_depth_image[i-d:i+d+1, j-d:j+d+1] = 8
-
-            store(cv_depth_image)
-
-            # Centre neighbours
-            neighbours = cv_depth_image[i-d:i+d+1, j-d:j+d+1].flatten()
-            neighbours = neighbours[~np.isnan(neighbours)]
-            print(neighbours[~np.isnan(neighbours)])
-
-            # Filter depth image from invalid values (NaN)
+            # Fetch window around the centre of the
+            # bounding box and get rid of NaN values
+            roi = cv_depth_image[j-d:j+d+1, i-d:i+d+1]
             roi = roi[~np.isnan(roi)]
-            print("ROI: ", roi[0])
-            # print(roi[~np.isnan(roi)])
+
+            print("ROI: ", roi)
 
             # Copy over detections items
             # for future 1 to 1 mapping
             distance = Distance()
             distance.ID = detection.ID
 
-            # Compute average distance
-            roi_sum = np.sum(roi)
-            # roi_sum = np.sum(neighbours)
+            # Compute average distance over
+            # ROI window
+            avr_distance = np.sum(roi) / roi.size
 
             # Average distance of the person
-            distance.distance = roi_sum / roi.size
-            # distance.distance = roi_sum / neighbours.size
+            distance.distance = avr_distance
 
             # Aggregate the distance to the
             # general distances array

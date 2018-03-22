@@ -129,9 +129,7 @@ class PersonDetection:
                 cv2.circle(frame, centre_point, 4, (0,0,255), -1)
 
                 # Get 480x640 ratio points
-                centre_ratio_point = self.getRatioPoint(centre_point[0], centre_point[1])
-                top_left_ratio_point = self.getRatioPoint(top_left[0], top_left[1])
-                bottom_right_ratio_point = self.getRatioPoint(bottom_right[0], bottom_right[1])
+                ratio_point = self.getRatioPoint(centre_point[0], centre_point[1])
 
                 # Detection info
                 detection = Detection()

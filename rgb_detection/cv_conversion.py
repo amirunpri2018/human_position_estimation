@@ -113,12 +113,12 @@ def main(args):
 
     try:
         # Subscriptions (via Subscriber package)
-        rgb_sub   = message_filters.Subscriber("/xtion/rgb/image_raw", Image)
-        depth_sub = message_filters.Subscriber("/xtion/depth_registered/image", Image)
+        rgb_sub   = message_filters.Subscriber("/xtion/rgb/image_rect_color", Image)
+        depth_sub = message_filters.Subscriber("/xtion/depth_registered/image_raw", Image)
         # point_sub = message_filters.Subscriber("/xtion/depth_registered/points", PointCloud2)
 
         # Synchronize subscriptions
-        ats = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub], queue_size=5, slop=0.1)
+        ats = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub], queue_size=2, slop=0.1)
         ats.registerCallback(processSubscriptions)
 
         # Spin it baby !
