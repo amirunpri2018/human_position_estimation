@@ -44,7 +44,7 @@ def toMat(depth_raw_image):
         # Depth raw image to OpenCV format
         cv_depth_image = CvBridge().imgmsg_to_cv2(depth_raw_image, '32FC1')
 
-        # Store depth image
+        # DO NOT uncomment
         # store(cv_depth_image)
 
         return cv_depth_image
