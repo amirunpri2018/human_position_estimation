@@ -88,7 +88,6 @@ class PersonDetection:
 
         # Resize image to be maximum 400px wide
         frame = imutils.resize(frame, width = 400)
-        print("Frame shape: ", frame.shape)
 
         # Blob conversion (detecion purposes)
         (h, w) = frame.shape[:2]
