@@ -93,7 +93,7 @@ class PoseFinding:
         except Exception as CvBridgeError:
             print('Error during image conversion: ', CvBridgeError)
 
-    def getDepths(self, req):
+    def getPoses(self, req):
         """
             Receives detections and
             fetches their respective
@@ -203,7 +203,7 @@ def main(args):
         pf = PoseFinding()
 
         # Detection service
-        service = rospy.Service('rgb_to_depth_mapping', RequestDepth, pf.getDepths)
+        service = rospy.Service('rgb_to_depth_mapping', RequestDepth, pf.getPoses)
 
         # Spin it baby !
         rospy.spin()
