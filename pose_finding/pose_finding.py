@@ -10,6 +10,7 @@
 
 # Modules
 import os
+import tf
 import cv2
 import sys
 import math
@@ -17,11 +18,14 @@ import rospy
 import numpy as np
 
 from pathlib import Path
-from sensor_msgs.msg import Image, CameraInfo
+from point_cloud2 import *
 from cv_bridge import CvBridge, CvBridgeError
 from human_aware_robot_navigation.srv import *
 from human_aware_robot_navigation.msg import *
 from image_geometry import PinholeCameraModel
+from std_msgs.msg import Header
+from sensor_msgs.msg import Image, CameraInfo, PointCloud2
+from geometry_msgs.msg import Point, PointStamped
 
 class PoseFinding:
 
@@ -29,7 +33,11 @@ class PoseFinding:
         """
             Constructor.
         """
-        self.initialised = False
+        # Tf listener
+        self.tf_listener = tf.TransformListener()
+
+        # Set camera info boolean flag
+        self.cameraInfoInitialised = False
 
         # PinholeCameraModel object
         self.pcm = PinholeCameraModel()
@@ -41,37 +49,20 @@ class PoseFinding:
         self.path = str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0])
 
         # Publisher (custom detection message)
-        self.info_sub  = rospy.Subscriber("/xtion/rgb/camera_info", CameraInfo, self.callback)
-        self.rgb_sub   = rospy.Subscriber("/xtion/rgb/image_raw", Image, self.callback2)
+        self.info_sub  = rospy.Subscriber("/xtion/rgb/camera_info", CameraInfo, self.cameraInfoCallback)
 
-    def callback(self, info_msg):
+    def cameraInfoCallback(self, info_msg):
         """
             Sets the received info msg.
 
             Arguments:
                 sensor_msgs/Image: Camera info msg
         """
-        if not self.initialised:
+        if not self.cameraInfoInitialised:
             self.pcm.fromCameraInfo(info_msg)
-            self.initialised = True
+            self.cameraInfoInitialised = True
 
-    def callback2(self, rgb_image):
-        """
-            Sets the received info msg.
-
-            Arguments:
-                sensor_msgs/Image: Camera info msg
-        """
-        try:
-            cv_image = CvBridge().imgmsg_to_cv2(rgb_image, 'bgr8')
-            self.pcm.rectifyImage(cv_image, cv_image)
-            print(cv_image.shape)
-            self.store2(cv_image)
-
-        except Exception as CvBridgeError:
-            print('Error during image conversion: ', CvBridgeError)
-
-    # # Raw to OpenCV conversion
+    # Raw to OpenCV conversion
     def store(self, cv_image):
         """
             Stores the converted cv_image
@@ -79,22 +70,10 @@ class PoseFinding:
             by a different node.
 
             Arguments:
-                param1: MAT image
+                MAT: OpenCV MAT format image
         """
         cv2.normalize(cv_image, cv_image, 0, 1, cv2.NORM_MINMAX)
         cv2.imwrite(self.path + "/data/depth_image/depth_image.png", cv_image*255)
-
-    # # Raw to OpenCV conversion
-    def store2(self, cv_image):
-        """
-            Stores the converted cv_image
-            in memory to be further processed
-            by a different node.
-
-            Arguments:
-                param1: MAT image
-        """
-        cv2.imwrite(self.path + "/data/depth_image/rect_img.png", cv_image)
 
     def toMat(self, depth_raw_image):
         """
@@ -146,11 +125,44 @@ class PoseFinding:
                 i = detection.centre_x
                 j = detection.centre_y
 
-                print("Centre point: ", cv_depth_image[j,i])
-                print("Rectify point: ", self.pcm.rectifyPoint((j,i)))
-                print("3D point: ", self.pcm.projectPixelTo3dRay((j,i)))
-                print("2D point: ", self.pcm.project3dToPixel((2.19, -1.34, 0.391)))
-                print("P matrix: ", self.pcm.projectionMatrix())
+                if not math.isnan(cv_depth_image[j,i]):
+                    # print("Centre point: ", cv_depth_image[j,i])
+                    # print("Rectify point: ", self.pcm.rectifyPoint((j,i)))
+                    phm_point = self.pcm.projectPixelTo3dRay((j,i))
+                    # print("2D point: ", self.pcm.project3dToPixel((2.19, -1.34, 0.391)))
+                    # print("P matrix: ", self.pcm.projectionMatrix())
+                    a = 0.00173667
+                    x_world = (j-320)*a*cv_depth_image[j,i]
+                    y_world = (i-240)*a*cv_depth_image[j,i]
+                    # print("3D pointb: ", x_world, y_world, cv_depth_image[j,i])
+
+                    # Create geometry_msgs
+                    # point = Point()
+                    # point.x = x_world
+                    # point.y = y_world
+                    # point.z = cv_depth_image[j,i]
+                    # print("Point: ", point)
+
+                    point = Point()
+                    point.x = phm_point[0]
+                    point.y = phm_point[1]
+                    point.z = cv_depth_image[j,i]
+
+                    # Header message
+                    h = Header()
+                    h.stamp = rospy.Time(0)
+                    h.frame_id = "xtion_rgb_optical_frame"
+
+                    pointStamped = PointStamped()
+                    pointStamped.header = h
+                    pointStamped.point = point
+                    # print("PointStamped: ", pointStamped)
+
+                    try:
+                        transformed = self.tf_listener.transformPoint("map", pointStamped)
+                        print("Transformed: ", transformed.point)
+                    except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
+                        pass
 
                 # Fetch window around the centre of the
                 # bounding box and get rid of NaN values
