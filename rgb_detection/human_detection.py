@@ -60,17 +60,14 @@ class PersonDetection:
         # Bounding boxes self.colours
         self.colours = np.random.uniform(0, 255, size=(len(self.targets), 3))
 
-        # Load NN's serialised model
+        # Load the neural network serialised model
         self.net = cv2.dnn.readNetFromCaffe(self.path + "/data/nn_params/MobileNetSSD_deploy.prototxt.txt",
                                             self.path + "/data/nn_params/MobileNetSSD_deploy.caffemodel")
 
-        # Publisher (custom detection message)
+        # Distance (human-robot distance) and detection publishers
         self.detection_pub = rospy.Publisher('detections', Detections, queue_size=5)
 
-        # Publisher (custom detection message)
-        self.depth_pub = rospy.Publisher('distances', Distances, queue_size=5)
-
-        print("[INFO] Successful Initialisation")
+        print("[INFO] Successful DNN Initialisation")
 
     def detection(self, req):
         """
@@ -93,12 +90,12 @@ class PersonDetection:
         (h, w) = frame.shape[:2]
         blob = cv2.dnn.blobFromImage(cv2.resize(frame, (300, 300)), 0.007843, (300, 300), 127.5)
 
-        # Run feed-forward
+        # Run feed-forward (crates detection array)
         print("[INFO] Detection...")
         self.net.setInput(blob)
         detections = self.net.forward()
 
-        # loop over the detections
+        # Loop over the detections
         for i in np.arange(0, detections.shape[2]):
             # Get detection probability
             confidence = detections[0, 0, i, 2]
@@ -128,17 +125,13 @@ class PersonDetection:
                 cv2.circle(frame, centre_point, 4, (0,0,255), -1)
 
                 # Get 480x640 ratio points
-                ratio_point = self.getRatioPoint(centre_point[0], centre_point[1])
+                centre_ratio_point = self.getRatioPoint(centre_point[0], centre_point[1])
 
                 # Detection info
                 detection = Detection()
                 detection.ID = self.number_of_detections
-                detection.width = bottom_right[0] - top_left[0]
-                detection.height = bottom_right[1] - top_left[1]
-                detection.top_left_x = top_left[0]
-                detection.top_left_y = top_left[1]
-                detection.centre_x = ratio_point[0]
-                detection.centre_y = ratio_point[1]
+                detection.centre_x = centre_ratio_point[0]
+                detection.centre_y = centre_ratio_point[1]
 
                 # Aggregate the detection to the others
                 self.detections.array.append(detection)
@@ -152,7 +145,7 @@ class PersonDetection:
         # Add number_of_detections item to the detections message
         self.detections.number_of_detections = self.number_of_detections
 
-        # Request depth mapping on the detections
+        # Request depth mapping for the detections
         rospy.loginfo("Requesting depth mapping for the detections...")
         self.requestMapping(self.detections, req.depth)
 
@@ -168,18 +161,20 @@ class PersonDetection:
                 detections: RGB detections rgb position
         """
         # Wait for service to come alive
-        rospy.wait_for_service('rgb_to_depth_mapping')
+        rospy.wait_for_service('detection_pose')
 
         try:
             # Build request
-            request = rospy.ServiceProxy('rgb_to_depth_mapping', RequestDepth)
+            request = rospy.ServiceProxy('detection_pose', RequestDepth)
 
             # Get response from service
             response = request(detections, depth_image)
 
             # Publish detections
             self.detection_pub.publish(self.detections)
-            self.depth_pub.publish(response.distances)
+
+            # Access the response field of the custom msg
+            rospy.loginfo("Pose service: %s", response.res)
 
             # Clean
             self.detections = Detections()

@@ -18,7 +18,6 @@ import rospy
 import numpy as np
 
 from pathlib import Path
-from point_cloud2 import *
 from cv_bridge import CvBridge, CvBridgeError
 from human_aware_robot_navigation.srv import *
 from human_aware_robot_navigation.msg import *
@@ -33,8 +32,8 @@ class PoseFinding:
         """
             Constructor.
         """
-        # Tf listener
-        self.tf_listener = tf.TransformListener()
+        # Publishing rate
+        self.rate = rospy.Rate(10)
 
         # Set camera info boolean flag
         self.cameraInfoInitialised = False
@@ -42,13 +41,17 @@ class PoseFinding:
         # PinholeCameraModel object
         self.pcm = PinholeCameraModel()
 
-        # Publishing rate
-        self.rate = rospy.Rate(10)
+        # Tf listener
+        self.tf_listener = tf.TransformListener()
 
         # Constant path
         self.path = str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0])
 
-        # Publisher (custom detection message)
+        # Poses and distance publishers
+        self.poses_pub = rospy.Publisher('poses', Poses, queue_size=5)
+        self.distance_pub = rospy.Publisher('distances', Distances, queue_size=5)
+
+        # Camera info subscriber
         self.info_sub  = rospy.Subscriber("/xtion/rgb/camera_info", CameraInfo, self.cameraInfoCallback)
 
     def cameraInfoCallback(self, info_msg):
@@ -107,7 +110,9 @@ class PoseFinding:
             Returns:
                 Distances: Distances message
         """
-        # Custom distances message
+        # Custom distances and poses
+        # message objects
+        poses = Poses()
         distances = Distances()
 
         # Convert depth image into MAT
@@ -119,79 +124,94 @@ class PoseFinding:
             # Iterate over the detections
             for detection in req.detections.array:
 
-                # Sliding window centre point
-                # and size of neighbours
+                # Size of neighbours around
+                # the centre point to take in
+                # consideration for the distance
+                # average
                 d = 30
+
+                # Centre point of the detection
+                # box got from the service caller
                 i = detection.centre_x
                 j = detection.centre_y
 
-                if not math.isnan(cv_depth_image[j,i]):
-                    # print("Centre point: ", cv_depth_image[j,i])
-                    # print("Rectify point: ", self.pcm.rectifyPoint((j,i)))
-                    phm_point = self.pcm.projectPixelTo3dRay((j,i))
-                    # print("2D point: ", self.pcm.project3dToPixel((2.19, -1.34, 0.391)))
-                    # print("P matrix: ", self.pcm.projectionMatrix())
-                    a = 0.00173667
-                    x_world = (j-320)*a*cv_depth_image[j,i]
-                    y_world = (i-240)*a*cv_depth_image[j,i]
-                    # print("3D pointb: ", x_world, y_world, cv_depth_image[j,i])
-
-                    # Create geometry_msgs
-                    # point = Point()
-                    # point.x = x_world
-                    # point.y = y_world
-                    # point.z = cv_depth_image[j,i]
-                    # print("Point: ", point)
-
-                    point = Point()
-                    point.x = phm_point[0]
-                    point.y = phm_point[1]
-                    point.z = cv_depth_image[j,i]
-
-                    # Header message
-                    h = Header()
-                    h.stamp = rospy.Time(0)
-                    h.frame_id = "xtion_rgb_optical_frame"
-
-                    pointStamped = PointStamped()
-                    pointStamped.header = h
-                    pointStamped.point = point
-                    # print("PointStamped: ", pointStamped)
-
-                    try:
-                        transformed = self.tf_listener.transformPoint("map", pointStamped)
-                        print("Transformed: ", transformed.point)
-                    except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException):
-                        pass
-
-                # Fetch window around the centre of the
-                # bounding box and get rid of NaN values
+                # Fetch all distances around the centre
+                # point (d away from the centre point),
+                # and remove all those that evaluate to NaN
                 roi = cv_depth_image[j-d:j+d+1, i-d:i+d+1]
                 roi = roi[~np.isnan(roi)]
 
-                # print("ROI: ", roi)
+                # Compute average distance
+                # over centre neighbours
+                average_distance = np.sum(roi) / roi.size
 
-                # Copy over detections items
-                # for future 1 to 1 mapping
+                # Create distance message for the
+                # single detection. Note that the
+                # distance is averaged
                 distance = Distance()
                 distance.ID = detection.ID
-
-                # Compute average distance over
-                # ROI window
-                avr_distance = np.sum(roi) / roi.size
-
-                # Average distance of the person
-                distance.distance = avr_distance
-
-                # Aggregate the distance to the
-                # general distances array
+                distance.distance = average_distance
                 distances.array.append(distance)
 
-                cv_depth_image[j-d:j+d+1, i-d:i+d+1] = 8
-                self.store(cv_depth_image)
+                # if not math.isnan(cv_depth_image[j,i]):
+                phm_point = self.pcm.projectPixelTo3dRay((j,i))
+                # a = 0.00173667
+                # x_world = (j-320)*a*cv_depth_image[j,i]
+                # y_world = (i-240)*a*cv_depth_image[j,i]
+                # print("3D pointb: ", x_world, y_world, cv_depth_image[j,i])
+
+                # Create geometry_msgs
+                # point = Point()
+                # point.x = x_world
+                # point.y = y_world
+                # point.z = cv_depth_image[j,i]
+                # print("Point: ", point)
+
+                # Create a Point message
+                # for real world map transform
+                point = Point()
+                point.x = phm_point[0]
+                point.y = phm_point[1]
+                point.z = average_distance
+
+                # Create a custom header
+                # for the real world spatial
+                # transformation
+                transformHeader = Header()
+                transformHeader.stamp = rospy.Time(0)
+                transformHeader.frame_id = "xtion_rgb_optical_frame"
+
+                # Create pointStamped object
+                # for the real world spatial
+                # transformation
+                pointStamped = PointStamped()
+                pointStamped.header = transformHeader
+                pointStamped.point = point
+
+                try:
+                    # Transform optical frame point onto map coordinate
+                    transformed = self.tf_listener.transformPoint("map", pointStamped)
+                    print("Trans: ", transformed)
+
+                    # Create Pose message for detection
+                    pose = Pose()
+                    pose.ID = detection.ID
+                    pose.pose = transformed.point
+
+                    # Aggregate pose with the remaining ones
+                    poses.array.append(pose)
+
+                    print("Pose: ", pose)
+
+                except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
+                    print(e)
+
+        # Publish distances and poses
+        self.poses_pub.publish(poses)
+        self.distance_pub.publish(distances)
 
         # Return response back to the caller
-        return RequestDepthResponse(distances)
+        return RequestDepthResponse("success")
 
 def main(args):
 
@@ -203,7 +223,7 @@ def main(args):
         pf = PoseFinding()
 
         # Detection service
-        service = rospy.Service('rgb_to_depth_mapping', RequestDepth, pf.getPoses)
+        service = rospy.Service('detection_pose', RequestDepth, pf.getPoses)
 
         # Spin it baby !
         rospy.spin()
