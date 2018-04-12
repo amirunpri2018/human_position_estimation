@@ -117,7 +117,7 @@ def main(args):
         depth_sub = message_filters.Subscriber("/xtion/depth_registered/hw_registered/image_rect_raw", Image)
 
         # Synchronize subscriptions
-        ats = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub], queue_size=2, slop=0.3)
+        ats = message_filters.ApproximateTimeSynchronizer([rgb_sub, depth_sub], queue_size=5, slop=0.5)
         ats.registerCallback(processSubscriptions)
 
         # Spin it baby !

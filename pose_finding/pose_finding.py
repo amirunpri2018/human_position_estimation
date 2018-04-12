@@ -25,6 +25,8 @@ from image_geometry import PinholeCameraModel
 from std_msgs.msg import Header
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2
 from geometry_msgs.msg import Point, PointStamped
+from visualization_msgs.msg import Marker
+from visualization_msgs.msg import MarkerArray
 
 class PoseFinding:
 
@@ -47,14 +49,15 @@ class PoseFinding:
         # Constant path
         self.path = str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0])
 
-        # Poses and distance publishers
+        # Poses, distance and marker publishers
         self.poses_pub = rospy.Publisher('poses', Poses, queue_size=5)
         self.distance_pub = rospy.Publisher('distances', Distances, queue_size=5)
+        self.markers_pub = rospy.Publisher('visualization_marker_array', MarkerArray, queue_size=5)
 
         # Camera info subscriber
-        self.info_sub  = rospy.Subscriber("/xtion/rgb/camera_info", CameraInfo, self.cameraInfoCallback)
+        self.info_sub  = rospy.Subscriber("/xtion/rgb/camera_info", CameraInfo, self.setCameraInfo)
 
-    def cameraInfoCallback(self, info_msg):
+    def setCameraInfo(self, info_msg):
         """
             Sets the received info msg.
 
@@ -96,6 +99,164 @@ class PoseFinding:
         except Exception as CvBridgeError:
             print('Error during image conversion: ', CvBridgeError)
 
+    def getRegionOfInterest(self, i, j, d, cv_depth_image):
+        """
+            Returns the distances around the
+            center point of the bounding box,
+            a.k.a our ROI, which is used to
+            find the average distance. The ROI
+            is filtered such that non valid values
+            are removed (such as NaN).
+
+            Arguments:
+                int: i is the centre_x point of the bounding box centre
+                int: j is the centre_y point of the bounding box centre
+                int: d is the size of the neighbourhood around the centre
+                MAT: Depth image in CV MAT format
+
+            Returns:
+                Numpy array: Array with distance values
+        """
+        # Fetch all distances around the centre
+        # point (d away from the centre point)
+        roi = cv_depth_image[j-d:j+d+1, i-d:i+d+1]
+
+        # Return all the valid values
+        # within the ROI (all NaN values are removed)
+        return roi[~np.isnan(roi)]
+
+    def createDistance(self, ID, average_distance):
+        """
+            Creates a distance message object
+            for the detection.
+
+            Arguments:
+                int: The ID of the detection
+                float: The average distance from the detection (in meters)
+
+            Returns:
+                Distance: Distance object message
+        """
+        # Create distance message for the
+        # single detection. Note that the
+        # distance is averaged
+        distance = Distance()
+        distance.ID = ID
+        distance.distance = average_distance
+        return distance
+
+    def createPointStamped(self, i, j, average_distance):
+        """
+            Creates a point stamped object for
+            the real world pose transformation.
+
+            Arguments:
+                int: i is the centre_x point of the bounding box centre
+                int: j is the centre_y point of the bounding box centre
+                float: The average distance from the detection (in meters)
+
+            Returns:
+                PointStamped: PointStamped detection message
+        """
+        # Backproject the pixel point in the optical frame
+        phm_point = self.pcm.projectPixelTo3dRay((j,i))
+
+        # Create a Point message with
+        # the backprojection data and
+        # the retrieved depth data
+        point = Point()
+        point.x = phm_point[0]
+        point.y = phm_point[1]
+        point.z = average_distance
+
+        # Create a custom header for the
+        # point object (necessary for the map
+        # transform)
+        transformHeader = Header()
+        transformHeader.stamp = rospy.Time(0)
+        transformHeader.frame_id = "xtion_rgb_optical_frame"
+
+        # Create pointStamped object
+        # for the real world spatial
+        # transformation and combine it
+        # with the previous Point message
+        # and transformHeader
+        pointStamped = PointStamped()
+        pointStamped.header = transformHeader
+        pointStamped.point = point
+
+        return pointStamped
+
+    def createPose(self, ID, transformed):
+        """
+            Creates a geometry_msgs point object
+            containing detection's real world map
+            pose.
+
+            Arguments:
+                int: The detection ID
+                geometry_msgs/PointStamped: The map pose of the detection
+
+            Returns:
+                geometry_msgs/Pose: Detection pose in the map
+        """
+        # Create Pose message for detection
+        pose = Pose()
+        pose.ID = ID
+        pose.pose = transformed.point
+
+        return pose
+
+    def createMarker(self, ID, transformed):
+        """
+            Creates a marker visual message
+            for the detection
+
+            Arguments:
+                int: The detection ID
+                geometry_msgs/PointStampe: The map pose of the detection
+
+            Returns:
+                visualization_msgs/Marker : Detection marker
+        """
+        # Create Marker and add
+        # meta-information
+        marker = Marker()
+        marker.header.frame_id = "/map"
+        marker.header.stamp = rospy.Time.now()
+        marker.ns = "harn"
+        marker.id = ID
+        marker.type = marker.SPHERE
+        marker.action = marker.ADD
+
+        # Marker pose
+        marker.pose.position.x = transformed.point.x
+        marker.pose.position.y = transformed.point.y
+        marker.pose.position.z = transformed.point.z
+
+        # Marker orientation
+        # (we don't care about this, at the moement)
+        marker.pose.orientation.x = 0.0;
+        marker.pose.orientation.y = 0.0;
+        marker.pose.orientation.z = 0.0;
+        marker.pose.orientation.w = 1.0
+
+        # Marker scale
+        marker.scale.x = 0.1
+        marker.scale.y = 0.1
+        marker.scale.z = 0.1
+
+        # Marker color
+        marker.color.a = 1.0
+        marker.color.r = 1.0
+        marker.color.g = 0.0
+        marker.color.b = 0.0
+
+        # Marker lifetime
+        marker.lifetime.secs = 7
+
+        return marker
+
     def getPoses(self, req):
         """
             Receives detections and
@@ -110,10 +271,10 @@ class PoseFinding:
             Returns:
                 Distances: Distances message
         """
-        # Custom distances and poses
-        # message objects
+        # Message objects
         poses = Poses()
         distances = Distances()
+        markerArray = MarkerArray()
 
         # Convert depth image into MAT
         cv_depth_image = self.toMat(req.depth)
@@ -135,73 +296,62 @@ class PoseFinding:
                 i = detection.centre_x
                 j = detection.centre_y
 
-                # Fetch all distances around the centre
-                # point (d away from the centre point),
-                # and remove all those that evaluate to NaN
-                roi = cv_depth_image[j-d:j+d+1, i-d:i+d+1]
-                roi = roi[~np.isnan(roi)]
+                # Get region of interest around centre point
+                roi = self.getRegionOfInterest(i, j, d, cv_depth_image)
 
-                # Compute average distance
-                # over centre neighbours
+                # Compute average distance over neighbours
                 average_distance = np.sum(roi) / roi.size
 
-                # Create distance message for the
-                # single detection. Note that the
-                # distance is averaged
-                distance = Distance()
-                distance.ID = detection.ID
-                distance.distance = average_distance
-                distances.array.append(distance)
+                # Add detection distance to the distance array
+                distances.array.append(self.createDistance(detection.ID, average_distance))
 
-                # if not math.isnan(cv_depth_image[j,i]):
-                phm_point = self.pcm.projectPixelTo3dRay((j,i))
-                # a = 0.00173667
-                # x_world = (j-320)*a*cv_depth_image[j,i]
-                # y_world = (i-240)*a*cv_depth_image[j,i]
-                # print("3D pointb: ", x_world, y_world, cv_depth_image[j,i])
-
-                # Create geometry_msgs
+                # # if not math.isnan(cv_depth_image[j,i]):
+                # phm_point = self.pcm.projectPixelTo3dRay((j,i))
+                # # a = 0.00173667
+                # # x_world = (j-320)*a*cv_depth_image[j,i]
+                # # y_world = (i-240)*a*cv_depth_image[j,i]
+                # # print("3D pointb: ", x_world, y_world, cv_depth_image[j,i])
+                #
+                # # Create geometry_msgs
+                # # point = Point()
+                # # point.x = x_world
+                # # point.y = y_world
+                # # point.z = cv_depth_image[j,i]
+                # # print("Point: ", point)
+                #
+                # # Create a Point message
+                # # for real world map transform
                 # point = Point()
-                # point.x = x_world
-                # point.y = y_world
-                # point.z = cv_depth_image[j,i]
-                # print("Point: ", point)
+                # point.x = phm_point[0]
+                # point.y = phm_point[1]
+                # point.z = average_distance
+                #
+                # # Create a custom header
+                # # for the real world spatial
+                # # transformation
+                # transformHeader = Header()
+                # transformHeader.stamp = rospy.Time(0)
+                # transformHeader.frame_id = "xtion_rgb_optical_frame"
+                #
+                # # Create pointStamped object
+                # # for the real world spatial
+                # # transformation
+                # pointStamped = PointStamped()
+                # pointStamped.header = transformHeader
+                # pointStamped.point = point
 
-                # Create a Point message
-                # for real world map transform
-                point = Point()
-                point.x = phm_point[0]
-                point.y = phm_point[1]
-                point.z = average_distance
-
-                # Create a custom header
-                # for the real world spatial
-                # transformation
-                transformHeader = Header()
-                transformHeader.stamp = rospy.Time(0)
-                transformHeader.frame_id = "xtion_rgb_optical_frame"
-
-                # Create pointStamped object
-                # for the real world spatial
-                # transformation
-                pointStamped = PointStamped()
-                pointStamped.header = transformHeader
-                pointStamped.point = point
+                # Get transform stamped point
+                pointStamped = self.createPointStamped(i, j, average_distance)
 
                 try:
                     # Transform optical frame point onto map coordinate
                     transformed = self.tf_listener.transformPoint("map", pointStamped)
-                    print("Trans: ", transformed)
 
-                    # Create Pose message for detection
-                    pose = Pose()
-                    pose.ID = detection.ID
-                    pose.pose = transformed.point
+                    # Aggregate pose to poses array
+                    poses.array.append(self.createPose(detection.ID, transformed))
 
-                    # Aggregate pose with the remaining ones
-                    poses.array.append(pose)
-
-                    print("Pose: ", pose)
+                    # Aggregate marker with markers array
+                    markerArray.markers.append(self.createMarker(detection.ID, transformed))
 
                 except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
                     print(e)
@@ -209,6 +359,7 @@ class PoseFinding:
         # Publish distances and poses
         self.poses_pub.publish(poses)
         self.distance_pub.publish(distances)
+        self.markers_pub.publish(markerArray)
 
         # Return response back to the caller
         return RequestDepthResponse("success")
