@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>3d_human_pose_estimation</name>
+  <name>human_pose_estimation</name>
   <version>0.0.0</version>
   <description>Determine 3D pose of people in the map</description>
 
