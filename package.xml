@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>human_aware_robot_navigation</name>
+  <name>3d_human_pose_estimation</name>
   <version>0.0.0</version>
-  <description>The human_aware_robot_navigation package</description>
+  <description>Determine 3D pose of people in the map</description>
 
   <!-- Maintainer -->
   <maintainer email="itaouil@gmail.com">itaouil</maintainer>
