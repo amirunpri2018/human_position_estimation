@@ -35,14 +35,6 @@ The project does not have many software dependencies as it only relies on the RO
 
 All information regarding the installation process can be found in the [Wiki](https://github.com/itaouil/HARN/wiki). Enjoy!
 
-## Things To Know
+## I Want To Contribute
 
-This package was developed using Python3, OpenCV on the ROS Indigo distro running on Ubuntu 14.04 (LTS). The robot used was [TIAGO](http://tiago.pal-robotics.com/) by PAL Robotics.
-
-The estimation procedure is really efficient as it takes only 46 milliseconds for each logic run. However, because ROS services were used due to RGB-depth synchronisation issues it is not a constant frame by frame detection, but still it is probably good for your type of usage.
-
-The final result works well, but it can be further improved. So if you are willing to contribute to the project in any form such as update the documentation, improve the codebase, fix bugs or even publish the package to ROS and maintain it, please do contact me at **itaouil95@gmail.com** or just send a pull request. You can also find the wish-list at the end of the REAMDE file with possible fixes to start from.
-
-## How can I run it
-
-**Detailed** instructions on how to install, configure and run anything required by the project is available in the [Wiki](https://github.com/itaouil/HARN/wiki). of the project.
+The final result works well, but it can be further improved. So if you are willing to contribute to the project in any form such as update the documentation, improve the code-base, fix bugs or even publish the package to ROS and maintain it, please do contact me at **itaouil95@gmail.com** or send over a pull request. You can find a detailed wish-list in the [Wiki](https://github.com/itaouil/HARN/wiki).
