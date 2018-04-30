@@ -253,7 +253,7 @@ class PoseFinding:
         marker.color.b = 0.0
 
         # Marker lifetime
-        marker.lifetime.secs = 7
+        marker.lifetime.secs = 2
 
         return marker
 
