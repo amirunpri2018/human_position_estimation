@@ -19,8 +19,8 @@ import numpy as np
 
 from pathlib import Path
 from cv_bridge import CvBridge, CvBridgeError
-from human_aware_robot_navigation.srv import *
-from human_aware_robot_navigation.msg import *
+from human_position_estimation.srv import *
+from human_position_estimation.msg import *
 from image_geometry import PinholeCameraModel
 from std_msgs.msg import Header
 from sensor_msgs.msg import Image, CameraInfo, PointCloud2

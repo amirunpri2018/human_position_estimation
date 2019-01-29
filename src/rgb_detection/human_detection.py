@@ -21,8 +21,8 @@ import numpy as np
 
 from pathlib import Path
 from sensor_msgs.msg import Image
-from human_aware_robot_navigation.msg import *
-from human_aware_robot_navigation.srv import *
+from human_position_estimation.msg import *
+from human_position_estimation.srv import *
 
 class PersonDetection:
 

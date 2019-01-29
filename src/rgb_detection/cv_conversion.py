@@ -22,7 +22,7 @@ from cv_bridge import CvBridge, CvBridgeError
 
 # Messages for requests and subscriptions
 from sensor_msgs.msg import Image, PointCloud2
-from human_aware_robot_navigation.srv import *
+from human_position_estimation.srv import *
 
 # Constant path
 PATH = str(Path(os.path.dirname(os.path.abspath(__file__))).parents[0])
